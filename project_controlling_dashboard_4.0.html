@@ -1,0 +1,2175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Management & Controlling Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --primary: #1a3c8f;
+    --primary-light: #2a52b8;
+    --accent: #7c3aed;
+    --teal: #0d9488;
+    --amber: #d97706;
+    --red: #dc2626;
+    --green: #16a34a;
+    --bg: #f0f4fc;
+    --card: #ffffff;
+    --border: #d1daf0;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --text-light: #94a3b8;
+    --header-bg: #1a3c8f;
+    --shadow: 0 2px 12px rgba(26,60,143,0.08);
+    --shadow-lg: 0 8px 32px rgba(26,60,143,0.14);
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    min-height: 100vh;
+  }
+
+  /* ===== HEADER ===== */
+  .dashboard-header {
+    background: var(--header-bg);
+    color: white;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.18);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .header-logo { font-size: 22px; }
+  .header-title h1 { font-size: 16px; font-weight: 700; letter-spacing: 0.01em; }
+  .header-title p { font-size: 11px; opacity: 0.75; margin-top: 1px; }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .header-meta { font-size: 10px; opacity: 0.7; text-align: right; }
+  .refresh-btn {
+    background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
+    color: white; border-radius: 50%; width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    font-size: 14px; transition: background 0.2s;
+  }
+  .refresh-btn:hover { background: rgba(255,255,255,0.25); }
+
+  /* ===== STAKEHOLDER CHIPS ===== */
+  .stakeholder-chips { display: flex; gap: 8px; }
+  .stakeholder-chip {
+    background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 20px; padding: 4px 10px 4px 8px;
+    display: flex; align-items: center; gap: 6px; font-size: 11px;
+    cursor: pointer; transition: background 0.2s;
+  }
+  .stakeholder-chip:hover { background: rgba(255,255,255,0.22); }
+  .stakeholder-chip .avatar {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; flex-shrink: 0;
+  }
+  .chip-info { line-height: 1.2; }
+  .chip-name { font-weight: 600; font-size: 11px; }
+  .chip-role { font-size: 9px; opacity: 0.8; }
+
+  /* ===== FILTER SECTION ===== */
+  .filters-section {
+    background: var(--card); border-bottom: 1px solid var(--border);
+    padding: 10px 20px; display: flex; flex-direction: column; gap: 8px;
+  }
+  .filter-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .filter-group { display: flex; flex-direction: column; gap: 2px; min-width: 140px; }
+  .filter-label {
+    font-size: 9px; color: var(--text-muted); font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .filter-label svg { width: 10px; height: 10px; }
+
+  /* ===== MULTISELECT DROPDOWN ===== */
+  .multiselect { position: relative; width: 100%; }
+  .multiselect-trigger {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 5px 8px; cursor: pointer; transition: border 0.2s; min-height: 28px;
+    gap: 4px; font-size: 12px;
+  }
+  .multiselect-trigger:hover { border-color: var(--primary); }
+  .multiselect-trigger.open { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(26,60,143,0.12); }
+  .multiselect-value { flex: 1; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .multiselect-value.placeholder { color: var(--text-muted); }
+  .multiselect-badges { display: flex; gap: 2px; flex-wrap: nowrap; overflow: hidden; flex: 1; }
+  .badge-count {
+    background: var(--primary); color: white; border-radius: 10px;
+    padding: 1px 6px; font-size: 10px; font-weight: 700; white-space: nowrap;
+  }
+  .chevron { color: var(--text-muted); font-size: 10px; flex-shrink: 0; transition: transform 0.2s; }
+  .chevron.open { transform: rotate(180deg); }
+  .multiselect-dropdown {
+    position: absolute; top: calc(100% + 4px); left: 0; z-index: 999;
+    background: white; border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow-lg); min-width: 180px; max-height: 260px;
+    display: none; flex-direction: column;
+  }
+  .multiselect-dropdown.open { display: flex; }
+  .dropdown-search {
+    padding: 8px; border-bottom: 1px solid var(--border);
+  }
+  .dropdown-search input {
+    width: 100%; border: 1px solid var(--border); border-radius: 4px;
+    padding: 4px 8px; font-size: 12px; outline: none; font-family: inherit;
+  }
+  .dropdown-search input:focus { border-color: var(--primary); }
+  .dropdown-actions {
+    display: flex; gap: 8px; padding: 6px 10px;
+    border-bottom: 1px solid var(--border); font-size: 11px;
+  }
+  .dropdown-action { color: var(--primary); cursor: pointer; font-weight: 600; }
+  .dropdown-action:hover { text-decoration: underline; }
+  .dropdown-options { overflow-y: auto; flex: 1; }
+  .dropdown-option {
+    display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+    cursor: pointer; transition: background 0.1s; font-size: 12px;
+  }
+  .dropdown-option:hover { background: #f0f4fc; }
+  .dropdown-option.selected { background: #eef2ff; }
+  .dropdown-option input[type="checkbox"] { accent-color: var(--primary); width: 13px; height: 13px; flex-shrink: 0; }
+  .dropdown-option .opt-label { flex: 1; }
+  .dropdown-footer {
+    padding: 8px 10px; border-top: 1px solid var(--border);
+    display: flex; justify-content: flex-end; gap: 8px;
+  }
+  .btn-apply {
+    background: var(--primary); color: white; border: none; border-radius: 4px;
+    padding: 4px 12px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit;
+  }
+  .btn-apply:hover { background: var(--primary-light); }
+  .btn-cancel {
+    background: none; border: 1px solid var(--border); border-radius: 4px;
+    padding: 4px 12px; font-size: 11px; cursor: pointer; font-family: inherit; color: var(--text-muted);
+  }
+
+  /* ===== TIME PERIOD FILTER ===== */
+  .time-period-filter {
+    position: absolute; top: calc(100% + 4px); left: 0; z-index: 1000;
+    background: white; border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow-lg); display: none; width: 580px;
+  }
+  .time-period-filter.open { display: flex; }
+  .tp-presets {
+    width: 180px; border-right: 1px solid var(--border); padding: 8px 0;
+    display: flex; flex-direction: column;
+  }
+  .tp-preset {
+    padding: 8px 16px; cursor: pointer; font-size: 12px; color: var(--text);
+    display: flex; align-items: center; justify-content: space-between;
+    transition: background 0.1s;
+  }
+  .tp-preset:hover { background: #f0f4fc; }
+  .tp-preset.active { background: #eef2ff; color: var(--primary); font-weight: 600; }
+  .tp-preset .arrow { font-size: 10px; color: var(--text-muted); }
+  .tp-calendar { flex: 1; padding: 12px; }
+  .tp-date-inputs { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .tp-date-field {
+    border: 2px solid var(--primary); border-radius: 6px; padding: 6px 10px;
+    font-size: 12px; font-family: inherit; outline: none; flex: 1;
+  }
+  .tp-date-field.inactive { border-color: var(--border); }
+  .tp-date-separator { color: var(--text-muted); font-size: 14px; }
+  .tp-calendars { display: flex; gap: 16px; }
+  .tp-month { flex: 1; }
+  .tp-month-header {
+    text-align: center; font-weight: 700; font-size: 12px; color: var(--primary);
+    margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .tp-weekdays {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    gap: 2px; margin-bottom: 4px;
+  }
+  .tp-weekday {
+    text-align: center; font-size: 10px; font-weight: 600;
+    color: var(--text-muted); padding: 2px;
+  }
+  .tp-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .tp-day {
+    text-align: center; font-size: 12px; padding: 5px 2px;
+    border-radius: 50%; cursor: pointer; transition: all 0.15s; width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center; margin: auto;
+  }
+  .tp-day:hover { background: var(--bg); }
+  .tp-day.selected { background: var(--primary); color: white; font-weight: 700; }
+  .tp-day.in-range { background: #dbeafe; color: var(--primary); border-radius: 0; }
+  .tp-day.range-start { background: var(--primary); color: white; border-radius: 50% 0 0 50%; }
+  .tp-day.range-end { background: var(--primary); color: white; border-radius: 0 50% 50% 0; }
+  .tp-day.today { border: 1.5px solid var(--primary); font-weight: 700; }
+  .tp-day.empty { cursor: default; }
+  .tp-day.disabled { color: var(--text-light); cursor: default; }
+  .tp-actions {
+    display: flex; justify-content: flex-end; gap: 8px;
+    padding: 10px 12px; border-top: 1px solid var(--border);
+  }
+  .tp-compare {
+    display: flex; align-items: center; gap: 8px; padding: 8px 16px;
+    border-top: 1px solid var(--border);
+  }
+  .toggle {
+    width: 32px; height: 18px; background: #94a3b8; border-radius: 9px; position: relative;
+    cursor: pointer; transition: background 0.2s;
+  }
+  .toggle.on { background: var(--primary); }
+  .toggle::after {
+    content: ''; position: absolute; top: 2px; left: 2px;
+    width: 14px; height: 14px; border-radius: 50%; background: white;
+    transition: transform 0.2s;
+  }
+  .toggle.on::after { transform: translateX(14px); }
+
+  /* ===== MAIN CONTENT ===== */
+  .main-content { padding: 16px 20px; display: flex; flex-direction: column; gap: 14px; }
+
+  /* ===== SECTION HEADERS ===== */
+  .section-divider {
+    font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;
+    letter-spacing: 0.08em; padding: 4px 0 2px; border-bottom: 1px solid var(--border);
+    margin-bottom: 2px;
+  }
+
+  /* ===== KPI CARDS ===== */
+  .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+
+  .kpi-card {
+    background: var(--card); border-radius: var(--radius); border: 1px solid var(--border);
+    padding: 16px; box-shadow: var(--shadow); cursor: pointer; transition: box-shadow 0.2s, transform 0.15s;
+    position: relative; overflow: hidden;
+  }
+  .kpi-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-1px); }
+  .kpi-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+  .kpi-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .kpi-title-block { flex: 1; }
+  .kpi-title { font-size: 13px; font-weight: 700; color: var(--text); }
+  .kpi-subtitle { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+  .kpi-owner { font-size: 10px; color: var(--primary); font-weight: 600; margin-top: 2px; }
+  .kpi-drill-btn {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+    padding: 3px 7px; font-size: 10px; color: var(--primary); cursor: pointer;
+    font-weight: 600; font-family: inherit; transition: all 0.15s;
+    display: flex; align-items: center; gap: 3px;
+  }
+  .kpi-drill-btn:hover { background: #eef2ff; }
+  .kpi-body { display: flex; align-items: center; gap: 12px; }
+  .kpi-donut-wrap { position: relative; width: 80px; height: 80px; flex-shrink: 0; }
+  .kpi-donut-wrap canvas { width: 80px !important; height: 80px !important; }
+  .kpi-pct {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    font-size: 16px; font-weight: 700; color: var(--text);
+  }
+  .kpi-metrics { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+  .kpi-metric { display: flex; justify-content: space-between; align-items: center; }
+  .kpi-metric-label { font-size: 11px; color: var(--text-muted); }
+  .kpi-metric-value { font-size: 12px; font-weight: 700; color: var(--text); font-family: 'DM Mono', monospace; }
+  .kpi-bar-wrap { height: 6px; background: var(--bg); border-radius: 3px; margin-top: 4px; overflow: hidden; }
+  .kpi-bar { height: 100%; border-radius: 3px; transition: width 0.8s ease; }
+  .kpi-label { font-size: 10px; color: var(--text-muted); text-align: center; margin-top: 6px; }
+  .kpi-visible-to { font-size: 10px; color: var(--text-muted); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .kpi-visible-to span { color: var(--primary); font-weight: 600; }
+
+  /* ===== WIDGETS ROW ===== */
+  .widgets-row { display: grid; grid-template-columns: 1fr 1fr 1.6fr; gap: 14px; }
+  .widgets-row-2 { display: grid; grid-template-columns: 1fr 1.6fr; gap: 14px; }
+
+  /* ===== WIDGET BASE ===== */
+  .widget {
+    background: var(--card); border-radius: var(--radius); border: 1px solid var(--border);
+    box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden;
+  }
+  .widget-header {
+    padding: 12px 14px 8px; display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+  .widget-title { font-size: 13px; font-weight: 700; color: var(--text); }
+  .widget-subtitle { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+  .widget-actions { display: flex; gap: 6px; }
+  .widget-btn {
+    background: none; border: 1px solid var(--border); border-radius: 4px;
+    padding: 3px 8px; font-size: 10px; color: var(--primary); cursor: pointer;
+    font-weight: 600; font-family: inherit; transition: all 0.15s;
+  }
+  .widget-btn:hover { background: #eef2ff; }
+  .widget-body { padding: 12px 14px; flex: 1; }
+  .widget-footer {
+    padding: 8px 14px; border-top: 1px solid var(--border);
+    font-size: 10px; color: var(--text-muted); display: flex; align-items: center; justify-content: space-between;
+  }
+  .widget-owner a { color: var(--primary); font-weight: 600; text-decoration: none; }
+
+  /* ===== TASK BY STATUS ===== */
+  .task-status-body { display: flex; align-items: center; gap: 16px; }
+  .task-donut-wrap { position: relative; width: 120px; height: 120px; flex-shrink: 0; }
+  .task-donut-wrap canvas { width: 120px !important; height: 120px !important; }
+  .task-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; }
+  .task-total-num { font-size: 22px; font-weight: 700; }
+  .task-total-lbl { font-size: 9px; color: var(--text-muted); }
+  .task-legend { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+  .task-legend-item {
+    display: flex; align-items: center; gap: 6px; padding: 4px 6px;
+    border-radius: 4px; cursor: pointer; transition: background 0.1s;
+  }
+  .task-legend-item:hover { background: var(--bg); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .legend-label { flex: 1; font-size: 11px; color: var(--text); }
+  .legend-count { font-size: 11px; font-weight: 700; }
+  .legend-pct { font-size: 10px; color: var(--text-muted); }
+
+  /* ===== TIMESHEET ===== */
+  .timesheet-body { display: flex; gap: 12px; align-items: center; }
+  .ts-donut-wrap { position: relative; width: 110px; height: 110px; flex-shrink: 0; }
+  .ts-donut-wrap canvas { width: 110px !important; height: 110px !important; }
+  .ts-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; }
+  .ts-total { font-size: 18px; font-weight: 700; }
+  .ts-lbl { font-size: 9px; color: var(--text-muted); }
+  .ts-metrics { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  .ts-metric { display: flex; flex-direction: column; gap: 3px; }
+  .ts-metric-header { display: flex; align-items: center; justify-content: space-between; }
+  .ts-metric-label { font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 5px; }
+  .ts-metric-label .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .ts-metric-value { font-size: 12px; font-weight: 700; }
+  .ts-bar-wrap { height: 5px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+  .ts-bar { height: 100%; border-radius: 3px; }
+  .ts-compliance {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 0 0; border-top: 1px solid var(--border); margin-top: 4px;
+  }
+  .ts-compliance-label { font-size: 11px; color: var(--text-muted); }
+  .ts-compliance-value { font-size: 16px; font-weight: 800; color: var(--green); }
+
+  /* ===== CHARTS ===== */
+  .chart-wrap { position: relative; width: 100%; }
+
+  /* ===== TASK TABLE ===== */
+  .task-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .task-table th {
+    background: var(--bg); padding: 7px 8px; text-align: left;
+    font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;
+    letter-spacing: 0.04em; border-bottom: 1px solid var(--border); white-space: nowrap;
+  }
+  .task-table td { padding: 7px 8px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+  .task-table tr:last-child td { border-bottom: none; }
+  .task-table tr:hover td { background: #f8faff; }
+  .task-table .expand-btn {
+    background: none; border: none; cursor: pointer; color: var(--text-muted);
+    padding: 0 4px 0 0; font-size: 12px; transition: transform 0.2s;
+  }
+  .task-table .expand-btn.open { transform: rotate(90deg); }
+  .project-name { font-weight: 600; color: var(--text); }
+  .client-name-tag {
+    display: block; font-size: 9px; font-weight: 500; color: var(--text-muted);
+    letter-spacing: 0.3px; margin-top: 1px; white-space: nowrap;
+  }
+  .hbar-client { font-size: 9px; color: var(--text-muted); font-weight: 400; display: block; margin-top: 1px; }
+  .task-name { color: var(--text-muted); }
+
+  /* Status Badges */
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: 600; white-space: nowrap;
+  }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .status-on-track { background: #dcfce7; color: #16a34a; }
+  .status-on-track .status-dot { background: #16a34a; }
+  .status-at-risk { background: #fef9c3; color: #d97706; }
+  .status-at-risk .status-dot { background: #d97706; }
+  .status-planned { background: #eff6ff; color: #2563eb; }
+  .status-planned .status-dot { background: #2563eb; }
+  .status-delayed { background: #fee2e2; color: #dc2626; }
+  .status-delayed .status-dot { background: #dc2626; }
+  .status-completed { background: #f3f4f6; color: #6b7280; }
+  .status-completed .status-dot { background: #6b7280; }
+
+  /* Progress bar in table */
+  .table-progress { display: flex; align-items: center; gap: 6px; }
+  .table-progress-bar { flex: 1; height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; min-width: 60px; }
+  .table-progress-fill { height: 100%; border-radius: 3px; }
+  .table-progress-pct { font-size: 10px; font-weight: 700; color: var(--text-muted); white-space: nowrap; }
+
+  /* Sub-rows */
+  .sub-row { display: none; }
+  .sub-row.visible { display: table-row; }
+  .sub-row td { background: #f8faff; padding-left: 28px; }
+  .sub-task-icon { color: var(--text-light); margin-right: 4px; font-size: 10px; }
+
+  /* ===== DRILL DOWN MODAL ===== */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 2000;
+    display: none; align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: white; border-radius: 12px; box-shadow: 0 24px 80px rgba(0,0,0,0.25);
+    width: 100%; max-width: 860px; max-height: 90vh; display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .modal-header {
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--primary); color: white;
+  }
+  .modal-title { font-size: 15px; font-weight: 700; }
+  .modal-subtitle { font-size: 11px; opacity: 0.8; margin-top: 2px; }
+  .modal-close {
+    background: rgba(255,255,255,0.15); border: none; color: white; border-radius: 50%;
+    width: 28px; height: 28px; cursor: pointer; font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal-close:hover { background: rgba(255,255,255,0.25); }
+  .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+  .modal-footer { padding: 12px 20px; border-top: 1px solid var(--border); background: var(--bg); }
+
+  /* Drill tabs */
+  .drill-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+  .drill-tab {
+    padding: 8px 16px; font-size: 12px; font-weight: 600; cursor: pointer;
+    color: var(--text-muted); border-bottom: 2px solid transparent; transition: all 0.15s;
+  }
+  .drill-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+  .drill-tab:hover { color: var(--primary); }
+  .drill-tab-content { display: none; }
+  .drill-tab-content.active { display: block; }
+
+  /* Drill table */
+  .drill-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .drill-table th {
+    background: var(--bg); padding: 8px 10px; text-align: left;
+    font-size: 10px; font-weight: 700; color: var(--text-muted);
+    border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .drill-table td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; }
+  .drill-table tr:hover td { background: #f8faff; }
+
+  /* Summary stats in modal */
+  .modal-kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+  .modal-kpi {
+    background: var(--bg); border-radius: 8px; padding: 10px 12px; text-align: center;
+  }
+  .modal-kpi-val { font-size: 20px; font-weight: 800; color: var(--primary); font-family: 'DM Mono', monospace; }
+  .modal-kpi-lbl { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+  /* ===== TOOLTIP ===== */
+  .tooltip-wrap { position: relative; display: inline-block; }
+  .tooltip-icon { color: var(--text-light); cursor: help; font-size: 11px; }
+  .tooltip-box {
+    position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+    background: #1e293b; color: white; font-size: 11px; padding: 6px 10px; border-radius: 6px;
+    white-space: nowrap; display: none; z-index: 500; pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  }
+  .tooltip-box::after {
+    content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    border: 5px solid transparent; border-top-color: #1e293b;
+  }
+  .tooltip-wrap:hover .tooltip-box { display: block; }
+
+  /* ===== GOVERNANCE STRIP ===== */
+  .governance-strip {
+    background: var(--card); border-radius: var(--radius); border: 1px solid var(--border);
+    box-shadow: var(--shadow); padding: 12px 16px;
+    display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start;
+  }
+  .gov-item { display: flex; align-items: flex-start; gap: 10px; flex: 1; min-width: 180px; }
+  .gov-icon { font-size: 22px; color: var(--primary); opacity: 0.7; }
+  .gov-info {}
+  .gov-title { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .gov-name { font-size: 13px; font-weight: 600; color: var(--text); margin-top: 1px; }
+  .gov-sub { font-size: 11px; color: var(--text-muted); }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 1100px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .widgets-row { grid-template-columns: 1fr 1fr; }
+    .widgets-row-2 { grid-template-columns: 1fr; }
+  }
+
+  /* ===== PLANNED VS ACTUAL CHART ===== */
+  .pva-chart-wrap { height: 200px; position: relative; }
+  .pva-legend { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+  .pva-legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-muted); }
+  .pva-legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+  .pva-legend-line { width: 16px; height: 2px; border-radius: 1px; }
+
+  /* ===== HORIZONTAL BAR CHART ===== */
+  .hbar-chart { display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }
+  .hbar-row { display: flex; align-items: center; gap: 8px; }
+  .hbar-label { width: 68px; font-size: 11px; font-weight: 600; color: var(--text); text-align: right; white-space: nowrap; }
+  .hbar-track { flex: 1; height: 22px; background: var(--bg); border-radius: 4px; overflow: visible; position: relative; }
+  .hbar-actual { height: 100%; border-radius: 4px 0 0 4px; background: var(--primary); position: absolute; top: 0; left: 0; display: flex; align-items: center; justify-content: flex-end; padding-right: 4px; }
+  .hbar-planned { height: 100%; position: absolute; top: 0; left: 0; border-radius: 4px; background: #93c5fd; opacity: 0.5; }
+  .hbar-val-actual { color: white; font-size: 9px; font-weight: 700; position: absolute; right: 5px; }
+  .hbar-vals { font-size: 10px; color: var(--text-muted); white-space: nowrap; min-width: 60px; font-family: 'DM Mono', monospace; }
+
+  /* Animate KPI bars on load */
+  @keyframes growBar { from { width: 0; } }
+  .kpi-bar { animation: growBar 1s ease; }
+
+  .info-callout {
+    background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px;
+    padding: 8px 12px; font-size: 11px; color: #1d4ed8; margin-bottom: 12px;
+    display: flex; align-items: flex-start; gap: 6px;
+  }
+
+  /* ===== LIVE DATA INTERACTIVITY ===== */
+  .kpi-bar { transition: width 0.7s cubic-bezier(.4,0,.2,1), background 0.3s ease; }
+  .ts-bar { transition: width 0.7s cubic-bezier(.4,0,.2,1); }
+  .table-progress-fill { transition: width 0.7s cubic-bezier(.4,0,.2,1); }
+
+  @keyframes flashUpdate {
+    0% { box-shadow: 0 0 0 0 rgba(26,60,143,0); }
+    25% { box-shadow: 0 0 0 3px rgba(26,60,143,0.25); }
+    100% { box-shadow: 0 0 0 0 rgba(26,60,143,0); }
+  }
+  .flash-update { animation: flashUpdate 0.9s ease; }
+
+  .value-pop { display: inline-block; animation: valuePop 0.5s ease; }
+  @keyframes valuePop {
+    0% { transform: scale(1); }
+    35% { transform: scale(1.12); }
+    100% { transform: scale(1); }
+  }
+
+  .live-toast {
+    position: fixed; bottom: 22px; right: 22px; z-index: 3000;
+    background: #1e293b; color: #fff; font-size: 12px; font-weight: 600;
+    padding: 10px 16px 10px 14px; border-radius: 8px; box-shadow: var(--shadow-lg);
+    display: flex; align-items: center; gap: 9px;
+    opacity: 0; transform: translateY(12px); pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+  .live-toast.show { opacity: 1; transform: translateY(0); }
+  .live-toast .live-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #22c55e; flex-shrink: 0;
+    box-shadow: 0 0 0 0 rgba(34,197,94,0.6); animation: pulseDot 1.3s infinite;
+  }
+  @keyframes pulseDot {
+    0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.55); }
+    70% { box-shadow: 0 0 0 7px rgba(34,197,94,0); }
+    100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<div class="dashboard-header">
+  <div class="header-left">
+    <div class="header-logo">📊</div>
+    <div class="header-title">
+      <h1>Project Management &amp; Controlling Dashboard</h1>
+      <p>Real-time insights: revenue, cost, margin, task status, timesheets &amp; resource productivity</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="header-meta">Last Updated<br><strong id="last-updated-value">13 May 2026 · 10:30 AM</strong></div>
+    <button class="refresh-btn" title="Refresh data" onclick="refreshDashboard()">↺</button>
+    <div class="stakeholder-chips">
+      <div class="stakeholder-chip" onclick="openModal('stakeholder','Vishwas Mahajan – CEO','Executive overview and strategic decisions')">
+        <div class="avatar" style="background:#3b5bd9;">VM</div>
+        <div class="chip-info"><div class="chip-name">Vishwas Mahajan</div><div class="chip-role">CEO</div></div>
+      </div>
+      <div class="stakeholder-chip" onclick="openModal('stakeholder','Saji Unni – Delivery Head','Delivery performance and team productivity')">
+        <div class="avatar" style="background:#0d9488;">SU</div>
+        <div class="chip-info"><div class="chip-name">Saji Unni</div><div class="chip-role">Delivery Head</div></div>
+      </div>
+      <div class="stakeholder-chip" onclick="openModal('stakeholder','Sambasivam – Finance','Financial governance and cost control')">
+        <div class="avatar" style="background:#7c3aed;">SA</div>
+        <div class="chip-info"><div class="chip-name">Sambasivam</div><div class="chip-role">Finance</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== FILTERS ===== -->
+<div class="filters-section">
+  <!-- Row 1 -->
+  <div class="filter-row">
+    <!-- Client -->
+    <div class="filter-group" style="min-width:160px;">
+      <div class="filter-label">🏢 Client</div>
+      <div class="multiselect" id="ms-client">
+        <div class="multiselect-trigger" onclick="toggleDropdown('ms-client')">
+          <div class="multiselect-value" id="ms-client-val">Mc Mary Jones Corp</div>
+          <span class="chevron" id="ms-client-chev">▼</span>
+        </div>
+        <div class="multiselect-dropdown" id="ms-client-dd">
+          <div class="dropdown-search"><input type="text" placeholder="Search clients..." oninput="filterOptions('ms-client', this.value)"></div>
+          <div class="dropdown-actions"><span class="dropdown-action" onclick="selectAll('ms-client')">All</span><span class="dropdown-action" onclick="clearAll('ms-client')">Clear</span></div>
+          <div class="dropdown-options" id="ms-client-opts">
+            <div class="dropdown-option selected" data-val="Mc Mary Jones Corp"><input type="checkbox" checked><span class="opt-label">Mc Mary Jones Corp</span></div>
+            <div class="dropdown-option" data-val="TechNova Inc"><input type="checkbox"><span class="opt-label">TechNova Inc</span></div>
+            <div class="dropdown-option" data-val="GlobalRetail Ltd"><input type="checkbox"><span class="opt-label">GlobalRetail Ltd</span></div>
+            <div class="dropdown-option" data-val="FinServ Partners"><input type="checkbox"><span class="opt-label">FinServ Partners</span></div>
+            <div class="dropdown-option" data-val="Healthcare Systems"><input type="checkbox"><span class="opt-label">Healthcare Systems</span></div>
+          </div>
+          <div class="dropdown-footer"><button class="btn-cancel" onclick="cancelDropdown('ms-client')">Cancel</button><button class="btn-apply" onclick="applyDropdown('ms-client')">Apply</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Project Status -->
+    <div class="filter-group">
+      <div class="filter-label">📋 Project Status</div>
+      <div class="multiselect" id="ms-pstatus">
+        <div class="multiselect-trigger" onclick="toggleDropdown('ms-pstatus')">
+          <div class="multiselect-value" id="ms-pstatus-val">Open</div>
+          <span class="chevron" id="ms-pstatus-chev">▼</span>
+        </div>
+        <div class="multiselect-dropdown" id="ms-pstatus-dd">
+          <div class="dropdown-actions"><span class="dropdown-action" onclick="selectAll('ms-pstatus')">All</span><span class="dropdown-action" onclick="clearAll('ms-pstatus')">Clear</span></div>
+          <div class="dropdown-options" id="ms-pstatus-opts">
+            <div class="dropdown-option selected" data-val="Open"><input type="checkbox" checked><span class="opt-label">Open</span></div>
+            <div class="dropdown-option" data-val="Closed"><input type="checkbox"><span class="opt-label">Closed</span></div>
+            <div class="dropdown-option" data-val="On Hold"><input type="checkbox"><span class="opt-label">On Hold</span></div>
+            <div class="dropdown-option" data-val="Completed"><input type="checkbox"><span class="opt-label">Completed</span></div>
+            <div class="dropdown-option" data-val="At Risk"><input type="checkbox"><span class="opt-label">At Risk</span></div>
+          </div>
+          <div class="dropdown-footer"><button class="btn-cancel" onclick="cancelDropdown('ms-pstatus')">Cancel</button><button class="btn-apply" onclick="applyDropdown('ms-pstatus')">Apply</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Time Period -->
+    <div class="filter-group" style="min-width:170px;">
+      <div class="filter-label">📅 Time Period</div>
+      <div class="multiselect" id="ms-period" style="position:relative;">
+        <div class="multiselect-trigger" onclick="toggleTimePeriod()">
+          <div class="multiselect-value" id="ms-period-val">This Month</div>
+          <span class="chevron" id="ms-period-chev">▼</span>
+        </div>
+        <!-- Google-style Time Period Picker -->
+        <div class="time-period-filter" id="tp-picker">
+          <div class="tp-presets">
+            <div class="tp-preset" onclick="selectPreset('Today')">Today</div>
+            <div class="tp-preset" onclick="selectPreset('Yesterday')">Yesterday</div>
+            <div class="tp-preset" onclick="selectPreset('This week (Sun - Today)')">This week (Sun - Today) <span class="arrow">▶</span></div>
+            <div class="tp-preset" onclick="selectPreset('Last 7 days')">Last 7 days</div>
+            <div class="tp-preset" onclick="selectPreset('Last week (Sun - Sat)')">Last week (Sun - Sat) <span class="arrow">▶</span></div>
+            <div class="tp-preset" onclick="selectPreset('Last 28 days')">Last 28 days</div>
+            <div class="tp-preset" onclick="selectPreset('Last 30 days')">Last 30 days</div>
+            <div class="tp-preset active" onclick="selectPreset('This Month')">This Month</div>
+            <div class="tp-preset" onclick="selectPreset('Last Month')">Last Month</div>
+            <div class="tp-preset" onclick="selectPreset('This Quarter')">This Quarter</div>
+            <div class="tp-preset" onclick="selectPreset('This Year')">This Year</div>
+            <div class="tp-preset" onclick="selectPreset('Custom')">Custom</div>
+          </div>
+          <div class="tp-calendar">
+            <div class="tp-date-inputs">
+              <input class="tp-date-field" id="tp-start" value="01 May 2026" readonly>
+              <span class="tp-date-separator">—</span>
+              <input class="tp-date-field inactive" id="tp-end" value="13 May 2026" readonly>
+            </div>
+            <div class="tp-calendars">
+              <div class="tp-month" id="tp-month-1"></div>
+              <div class="tp-month" id="tp-month-2"></div>
+            </div>
+            <div class="tp-compare">
+              <div class="toggle" id="tp-compare-toggle" onclick="this.classList.toggle('on')"></div>
+              <span style="font-size:12px;color:var(--text-muted);">Compare</span>
+            </div>
+            <div class="tp-actions">
+              <button class="btn-cancel" onclick="closeTimePeriod()">Cancel</button>
+              <button class="btn-apply" onclick="applyTimePeriod()">Apply</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Project Manager -->
+    <div class="filter-group">
+      <div class="filter-label">👤 Project Manager</div>
+      <div class="multiselect" id="ms-pm">
+        <div class="multiselect-trigger" onclick="toggleDropdown('ms-pm')">
+          <div class="multiselect-value" id="ms-pm-val">Anwar Shaikh</div>
+          <span class="chevron" id="ms-pm-chev">▼</span>
+        </div>
+        <div class="multiselect-dropdown" id="ms-pm-dd">
+          <div class="dropdown-search"><input type="text" placeholder="Search managers..." oninput="filterOptions('ms-pm', this.value)"></div>
+          <div class="dropdown-actions"><span class="dropdown-action" onclick="selectAll('ms-pm')">All</span><span class="dropdown-action" onclick="clearAll('ms-pm')">Clear</span></div>
+          <div class="dropdown-options" id="ms-pm-opts">
+            <div class="dropdown-option selected" data-val="Anwar Shaikh"><input type="checkbox" checked><span class="opt-label">Anwar Shaikh</span></div>
+            <div class="dropdown-option" data-val="Priya Mehta"><input type="checkbox"><span class="opt-label">Priya Mehta</span></div>
+            <div class="dropdown-option" data-val="Rahul Gupta"><input type="checkbox"><span class="opt-label">Rahul Gupta</span></div>
+            <div class="dropdown-option" data-val="Deepika Nair"><input type="checkbox"><span class="opt-label">Deepika Nair</span></div>
+          </div>
+          <div class="dropdown-footer"><button class="btn-cancel" onclick="cancelDropdown('ms-pm')">Cancel</button><button class="btn-apply" onclick="applyDropdown('ms-pm')">Apply</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contact – Client -->
+    <div class="filter-group">
+      <div class="filter-label">📞 Contact – Client</div>
+      <div class="multiselect" id="ms-cc">
+        <div class="multiselect-trigger" onclick="toggleDropdown('ms-cc')">
+          <div class="multiselect-value" id="ms-cc-val">Anand Gadhawe</div>
+          <span class="chevron" id="ms-cc-chev">▼</span>
+        </div>
+        <div class="multiselect-dropdown" id="ms-cc-dd">
+          <div class="dropdown-options" id="ms-cc-opts">
+            <div class="dropdown-option selected" data-val="Anand Gadhawe"><input type="checkbox" checked><span class="opt-label">Anand Gadhawe</span></div>
+            <div class="dropdown-option" data-val="Ravi Kumar"><input type="checkbox"><span class="opt-label">Ravi Kumar</span></div>
+            <div class="dropdown-option" data-val="Sneha Patel"><input type="checkbox"><span class="opt-label">Sneha Patel</span></div>
+          </div>
+          <div class="dropdown-footer"><button class="btn-cancel" onclick="cancelDropdown('ms-cc')">Cancel</button><button class="btn-apply" onclick="applyDropdown('ms-cc')">Apply</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Governance Contact -->
+    <div class="filter-group">
+      <div class="filter-label">🛡️ Governance Contact</div>
+      <div class="multiselect" id="ms-gc">
+        <div class="multiselect-trigger" onclick="toggleDropdown('ms-gc')">
+          <div class="multiselect-value" id="ms-gc-val">Jagdish Gawraskar</div>
+          <span class="chevron" id="ms-gc-chev">▼</span>
+        </div>
+        <div class="multiselect-dropdown" id="ms-gc-dd">
+          <div class="dropdown-options" id="ms-gc-opts">
+            <div class="dropdown-option selected" data-val="Jagdish Gawraskar"><input type="checkbox" checked><span class="opt-label">Jagdish Gawraskar</span></div>
+            <div class="dropdown-option" data-val="Meera Singh"><input type="checkbox"><span class="opt-label">Meera Singh</span></div>
+            <div class="dropdown-option" data-val="Ajay Verma"><input type="checkbox"><span class="opt-label">Ajay Verma</span></div>
+          </div>
+          <div class="dropdown-footer"><button class="btn-cancel" onclick="cancelDropdown('ms-gc')">Cancel</button><button class="btn-apply" onclick="applyDropdown('ms-gc')">Apply</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 2 -->
+  <div class="filter-row">
+    <div class="filter-group"><div class="filter-label">🏬 Department</div><div class="multiselect" id="ms-dept"><div class="multiselect-trigger" onclick="toggleDropdown('ms-dept')"><div class="multiselect-value" id="ms-dept-val">All</div><span class="chevron" id="ms-dept-chev">▼</span></div><div class="multiselect-dropdown" id="ms-dept-dd"><div class="dropdown-options" id="ms-dept-opts"><div class="dropdown-option selected" data-val="All"><input type="checkbox" checked><span class="opt-label">All</span></div><div class="dropdown-option" data-val="Engineering"><input type="checkbox"><span class="opt-label">Engineering</span></div><div class="dropdown-option" data-val="Design"><input type="checkbox"><span class="opt-label">Design</span></div><div class="dropdown-option" data-val="QA"><input type="checkbox"><span class="opt-label">QA</span></div><div class="dropdown-option" data-val="DevOps"><input type="checkbox"><span class="opt-label">DevOps</span></div></div><div class="dropdown-footer"><button class="btn-cancel" onclick="cancelDropdown('ms-dept')">Cancel</button><button class="btn-apply" onclick="applyDropdown('ms-dept')">Apply</button></div></div></div></div>
+    <div class="filter-group"><div class="filter-label">🗂️ Business Group</div><div class="multiselect" id="ms-bg"><div class="multiselect-trigger" onclick="toggleDropdown('ms-bg')"><div class="multiselect-value" id="ms-bg-val">All</div><span class="chevron" id="ms-bg-chev">▼</span></div><div class="multiselect-dropdown" id="ms-bg-dd"><div class="dropdown-options" id="ms-bg-opts"><div class="dropdown-option selected" data-val="All"><input type="checkbox" checked><span class="opt-label">All</span></div><div class="dropdown-option" data-val="Digital"><input type="checkbox"><span class="opt-label">Digital</span></div><div class="dropdown-option" data-val="Enterprise"><input type="checkbox"><span class="opt-label">Enterprise</span></div><div class="dropdown-option" data-val="Cloud"><input type="checkbox"><span class="opt-label">Cloud</span></div></div><div class="dropdown-footer"><button class="btn-cancel" onclick="cancelDropdown('ms-bg')">Cancel</button><button class="btn-apply" onclick="applyDropdown('ms-bg')">Apply</button></div></div></div></div>
+    <div class="filter-group"><div class="filter-label">🏛️ Organization Unit</div><div class="multiselect" id="ms-ou"><div class="multiselect-trigger" onclick="toggleDropdown('ms-ou')"><div class="multiselect-value" id="ms-ou-val">All</div><span class="chevron" id="ms-ou-chev">▼</span></div><div class="multiselect-dropdown" id="ms-ou-dd"><div class="dropdown-options" id="ms-ou-opts"><div class="dropdown-option selected" data-val="All"><input type="checkbox" checked><span class="opt-label">All</span></div><div class="dropdown-option" data-val="North India"><input type="checkbox"><span class="opt-label">North India</span></div><div class="dropdown-option" data-val="South India"><input type="checkbox"><span class="opt-label">South India</span></div><div class="dropdown-option" data-val="West India"><input type="checkbox"><span class="opt-label">West India</span></div></div><div class="dropdown-footer"><button class="btn-cancel" onclick="cancelDropdown('ms-ou')">Cancel</button><button class="btn-apply" onclick="applyDropdown('ms-ou')">Apply</button></div></div></div></div>
+    <div class="filter-group"><div class="filter-label">📦 Delivery Unit</div><div class="multiselect" id="ms-du"><div class="multiselect-trigger" onclick="toggleDropdown('ms-du')"><div class="multiselect-value" id="ms-du-val">All</div><span class="chevron" id="ms-du-chev">▼</span></div><div class="multiselect-dropdown" id="ms-du-dd"><div class="dropdown-options" id="ms-du-opts"><div class="dropdown-option selected" data-val="All"><input type="checkbox" checked><span class="opt-label">All</span></div><div class="dropdown-option" data-val="DU-Alpha"><input type="checkbox"><span class="opt-label">DU-Alpha</span></div><div class="dropdown-option" data-val="DU-Beta"><input type="checkbox"><span class="opt-label">DU-Beta</span></div><div class="dropdown-option" data-val="DU-Gamma"><input type="checkbox"><span class="opt-label">DU-Gamma</span></div></div><div class="dropdown-footer"><button class="btn-cancel" onclick="cancelDropdown('ms-du')">Cancel</button><button class="btn-apply" onclick="applyDropdown('ms-du')">Apply</button></div></div></div></div>
+    <div class="filter-group"><div class="filter-label">👥 Delivery Team</div><div class="multiselect" id="ms-dt"><div class="multiselect-trigger" onclick="toggleDropdown('ms-dt')"><div class="multiselect-value" id="ms-dt-val">All</div><span class="chevron" id="ms-dt-chev">▼</span></div><div class="multiselect-dropdown" id="ms-dt-dd"><div class="dropdown-options" id="ms-dt-opts"><div class="dropdown-option selected" data-val="All"><input type="checkbox" checked><span class="opt-label">All</span></div><div class="dropdown-option" data-val="Team Apex"><input type="checkbox"><span class="opt-label">Team Apex</span></div><div class="dropdown-option" data-val="Team Nexus"><input type="checkbox"><span class="opt-label">Team Nexus</span></div><div class="dropdown-option" data-val="Team Zenith"><input type="checkbox"><span class="opt-label">Team Zenith</span></div></div><div class="dropdown-footer"><button class="btn-cancel" onclick="cancelDropdown('ms-dt')">Cancel</button><button class="btn-apply" onclick="applyDropdown('ms-dt')">Apply</button></div></div></div></div>
+    <div class="filter-group"><div class="filter-label">🎯 Project Group</div><div class="multiselect" id="ms-pg"><div class="multiselect-trigger" onclick="toggleDropdown('ms-pg')"><div class="multiselect-value" id="ms-pg-val">All</div><span class="chevron" id="ms-pg-chev">▼</span></div><div class="multiselect-dropdown" id="ms-pg-dd"><div class="dropdown-options" id="ms-pg-opts"><div class="dropdown-option selected" data-val="All"><input type="checkbox" checked><span class="opt-label">All</span></div><div class="dropdown-option" data-val="Strategic"><input type="checkbox"><span class="opt-label">Strategic</span></div><div class="dropdown-option" data-val="Operational"><input type="checkbox"><span class="opt-label">Operational</span></div></div><div class="dropdown-footer"><button class="btn-cancel" onclick="cancelDropdown('ms-pg')">Cancel</button><button class="btn-apply" onclick="applyDropdown('ms-pg')">Apply</button></div></div></div></div>
+    <div class="filter-group"><div class="filter-label">🌟 Sponsor</div><div class="multiselect" id="ms-sp"><div class="multiselect-trigger" onclick="toggleDropdown('ms-sp')"><div class="multiselect-value" id="ms-sp-val">All</div><span class="chevron" id="ms-sp-chev">▼</span></div><div class="multiselect-dropdown" id="ms-sp-dd"><div class="dropdown-options" id="ms-sp-opts"><div class="dropdown-option selected" data-val="All"><input type="checkbox" checked><span class="opt-label">All</span></div><div class="dropdown-option" data-val="Vishwas Mahajan"><input type="checkbox"><span class="opt-label">Vishwas Mahajan</span></div><div class="dropdown-option" data-val="Anil Sharma"><input type="checkbox"><span class="opt-label">Anil Sharma</span></div></div><div class="dropdown-footer"><button class="btn-cancel" onclick="cancelDropdown('ms-sp')">Cancel</button><button class="btn-apply" onclick="applyDropdown('ms-sp')">Apply</button></div></div></div></div>
+  </div>
+
+  <!-- Row 3 -->
+  <div class="filter-row">
+    <div class="filter-group"><div class="filter-label">📁 Program</div><div class="multiselect" id="ms-prog"><div class="multiselect-trigger" onclick="toggleDropdown('ms-prog')"><div class="multiselect-value" id="ms-prog-val">All</div><span class="chevron" id="ms-prog-chev">▼</span></div><div class="multiselect-dropdown" id="ms-prog-dd"><div class="dropdown-options" id="ms-prog-opts"><div class="dropdown-option selected" data-val="All"><input type="checkbox" checked><span class="opt-label">All</span></div><div class="dropdown-option" data-val="Digital Transform"><input type="checkbox"><span class="opt-label">Digital Transform</span></div><div class="dropdown-option" data-val="Cloud Migration"><input type="checkbox"><span class="opt-label">Cloud Migration</span></div></div><div class="dropdown-footer"><button class="btn-cancel" onclick="cancelDropdown('ms-prog')">Cancel</button><button class="btn-apply" onclick="applyDropdown('ms-prog')">Apply</button></div></div></div></div>
+    <div class="filter-group"><div class="filter-label">👔 Program Manager</div><div class="multiselect" id="ms-progm"><div class="multiselect-trigger" onclick="toggleDropdown('ms-progm')"><div class="multiselect-value" id="ms-progm-val">All</div><span class="chevron" id="ms-progm-chev">▼</span></div><div class="multiselect-dropdown" id="ms-progm-dd"><div class="dropdown-options" id="ms-progm-opts"><div class="dropdown-option selected" data-val="All"><input type="checkbox" checked><span class="opt-label">All</span></div><div class="dropdown-option" data-val="Saji Unni"><input type="checkbox"><span class="opt-label">Saji Unni</span></div><div class="dropdown-option" data-val="Rashmi Iyer"><input type="checkbox"><span class="opt-label">Rashmi Iyer</span></div></div><div class="dropdown-footer"><button class="btn-cancel" onclick="cancelDropdown('ms-progm')">Cancel</button><button class="btn-apply" onclick="applyDropdown('ms-progm')">Apply</button></div></div></div></div>
+    <div class="filter-group"><div class="filter-label">🗃️ Portfolio</div><div class="multiselect" id="ms-port"><div class="multiselect-trigger" onclick="toggleDropdown('ms-port')"><div class="multiselect-value" id="ms-port-val">All</div><span class="chevron" id="ms-port-chev">▼</span></div><div class="multiselect-dropdown" id="ms-port-dd"><div class="dropdown-options" id="ms-port-opts"><div class="dropdown-option selected" data-val="All"><input type="checkbox" checked><span class="opt-label">All</span></div><div class="dropdown-option" data-val="Portfolio A"><input type="checkbox"><span class="opt-label">Portfolio A</span></div><div class="dropdown-option" data-val="Portfolio B"><input type="checkbox"><span class="opt-label">Portfolio B</span></div></div><div class="dropdown-footer"><button class="btn-cancel" onclick="cancelDropdown('ms-port')">Cancel</button><button class="btn-apply" onclick="applyDropdown('ms-port')">Apply</button></div></div></div></div>
+    <div class="filter-group"><div class="filter-label">💼 Portfolio Manager</div><div class="multiselect" id="ms-portm"><div class="multiselect-trigger" onclick="toggleDropdown('ms-portm')"><div class="multiselect-value" id="ms-portm-val">All</div><span class="chevron" id="ms-portm-chev">▼</span></div><div class="multiselect-dropdown" id="ms-portm-dd"><div class="dropdown-options" id="ms-portm-opts"><div class="dropdown-option selected" data-val="All"><input type="checkbox" checked><span class="opt-label">All</span></div><div class="dropdown-option" data-val="Vishwas Mahajan"><input type="checkbox"><span class="opt-label">Vishwas Mahajan</span></div><div class="dropdown-option" data-val="Saji Unni"><input type="checkbox"><span class="opt-label">Saji Unni</span></div></div><div class="dropdown-footer"><button class="btn-cancel" onclick="cancelDropdown('ms-portm')">Cancel</button><button class="btn-apply" onclick="applyDropdown('ms-portm')">Apply</button></div></div></div></div>
+    <div class="filter-group"><div class="filter-label">🔧 Resource Role</div><div class="multiselect" id="ms-rr"><div class="multiselect-trigger" onclick="toggleDropdown('ms-rr')"><div class="multiselect-value" id="ms-rr-val">All</div><span class="chevron" id="ms-rr-chev">▼</span></div><div class="multiselect-dropdown" id="ms-rr-dd"><div class="dropdown-options" id="ms-rr-opts"><div class="dropdown-option selected" data-val="All"><input type="checkbox" checked><span class="opt-label">All</span></div><div class="dropdown-option" data-val="Developer"><input type="checkbox"><span class="opt-label">Developer</span></div><div class="dropdown-option" data-val="BA"><input type="checkbox"><span class="opt-label">Business Analyst</span></div><div class="dropdown-option" data-val="Architect"><input type="checkbox"><span class="opt-label">Architect</span></div><div class="dropdown-option" data-val="Tester"><input type="checkbox"><span class="opt-label">Tester</span></div></div><div class="dropdown-footer"><button class="btn-cancel" onclick="cancelDropdown('ms-rr')">Cancel</button><button class="btn-apply" onclick="applyDropdown('ms-rr')">Apply</button></div></div></div></div>
+    <div class="filter-group"><div class="filter-label">🎓 Skill</div><div class="multiselect" id="ms-skill"><div class="multiselect-trigger" onclick="toggleDropdown('ms-skill')"><div class="multiselect-value" id="ms-skill-val">All</div><span class="chevron" id="ms-skill-chev">▼</span></div><div class="multiselect-dropdown" id="ms-skill-dd"><div class="dropdown-options" id="ms-skill-opts"><div class="dropdown-option selected" data-val="All"><input type="checkbox" checked><span class="opt-label">All</span></div><div class="dropdown-option" data-val="Java"><input type="checkbox"><span class="opt-label">Java</span></div><div class="dropdown-option" data-val="Python"><input type="checkbox"><span class="opt-label">Python</span></div><div class="dropdown-option" data-val="React"><input type="checkbox"><span class="opt-label">React</span></div><div class="dropdown-option" data-val="SAP"><input type="checkbox"><span class="opt-label">SAP</span></div></div><div class="dropdown-footer"><button class="btn-cancel" onclick="cancelDropdown('ms-skill')">Cancel</button><button class="btn-apply" onclick="applyDropdown('ms-skill')">Apply</button></div></div></div></div>
+    <div class="filter-group"><div class="filter-label">💳 Billing Type</div><div class="multiselect" id="ms-bt"><div class="multiselect-trigger" onclick="toggleDropdown('ms-bt')"><div class="multiselect-value" id="ms-bt-val">All</div><span class="chevron" id="ms-bt-chev">▼</span></div><div class="multiselect-dropdown" id="ms-bt-dd"><div class="dropdown-options" id="ms-bt-opts"><div class="dropdown-option selected" data-val="All"><input type="checkbox" checked><span class="opt-label">All</span></div><div class="dropdown-option" data-val="Fixed Price"><input type="checkbox"><span class="opt-label">Fixed Price</span></div><div class="dropdown-option" data-val="T&M"><input type="checkbox"><span class="opt-label">Time &amp; Material</span></div><div class="dropdown-option" data-val="Retainer"><input type="checkbox"><span class="opt-label">Retainer</span></div></div><div class="dropdown-footer"><button class="btn-cancel" onclick="cancelDropdown('ms-bt')">Cancel</button><button class="btn-apply" onclick="applyDropdown('ms-bt')">Apply</button></div></div></div></div>
+    <div class="filter-group"><div class="filter-label">🏦 Cost Center</div><div class="multiselect" id="ms-coc"><div class="multiselect-trigger" onclick="toggleDropdown('ms-coc')"><div class="multiselect-value" id="ms-coc-val">All</div><span class="chevron" id="ms-coc-chev">▼</span></div><div class="multiselect-dropdown" id="ms-coc-dd"><div class="dropdown-options" id="ms-coc-opts"><div class="dropdown-option selected" data-val="All"><input type="checkbox" checked><span class="opt-label">All</span></div><div class="dropdown-option" data-val="CC-001"><input type="checkbox"><span class="opt-label">CC-001 – Mumbai</span></div><div class="dropdown-option" data-val="CC-002"><input type="checkbox"><span class="opt-label">CC-002 – Pune</span></div><div class="dropdown-option" data-val="CC-003"><input type="checkbox"><span class="opt-label">CC-003 – Bengaluru</span></div></div><div class="dropdown-footer"><button class="btn-cancel" onclick="cancelDropdown('ms-coc')">Cancel</button><button class="btn-apply" onclick="applyDropdown('ms-coc')">Apply</button></div></div></div></div>
+  </div>
+</div>
+
+<!-- ===== MAIN CONTENT ===== -->
+<div class="main-content">
+
+  <!-- KPI WIDGETS -->
+  <div class="section-divider">📈 Financial Performance KPIs — Click any card to drill down by project, billing type, or time period</div>
+  <div class="kpi-grid">
+
+    <!-- Total Revenue -->
+    <div class="kpi-card" id="kpi-card-revenue" onclick="openModal('revenue','Total Revenue Drill-Down','Revenue breakdown by project, client, and billing type')">
+      <div class="kpi-card-header">
+        <div class="kpi-icon" style="background:#dbeafe;">💰</div>
+        <div class="kpi-title-block">
+          <div class="kpi-title">Total Revenue</div>
+          <div class="kpi-subtitle">Actual vs Planned revenue for selected period
+            <div class="tooltip-wrap"><span class="tooltip-icon">ⓘ</span><div class="tooltip-box">Revenue Achievement = (Actual Revenue ÷ Planned Revenue) × 100. Indicates how close the project is to its revenue target. Below 80% triggers escalation.</div></div>
+          </div>
+          <div class="kpi-owner">Owner (Finance): Sambasivam</div>
+        </div>
+        <button class="kpi-drill-btn" onclick="event.stopPropagation();openModal('revenue','Total Revenue Drill-Down','Revenue breakdown by project, client, and billing type')">🔍 Drill</button>
+      </div>
+      <div class="kpi-body">
+        <div>
+          <div class="kpi-donut-wrap"><canvas id="revDonut"></canvas><div class="kpi-pct" id="rev-pct">80%</div></div>
+          <div class="kpi-label">Revenue Achievement</div>
+        </div>
+        <div class="kpi-metrics">
+          <div class="kpi-metric"><span class="kpi-metric-label">Actual</span><span class="kpi-metric-value" id="rev-actual" style="color:var(--primary);">₹1,70,00,000</span></div>
+          <div class="kpi-metric"><span class="kpi-metric-label">Plan</span><span class="kpi-metric-value" id="rev-plan">₹2,00,00,000</span></div>
+          <div class="kpi-bar-wrap"><div class="kpi-bar" id="rev-bar" style="width:80%;background:var(--primary);"></div></div>
+          <div class="kpi-metric" style="margin-top:4px;"><span class="kpi-metric-label">Variance</span><span class="kpi-metric-value" id="rev-variance" style="color:var(--amber);">▼ ₹30,00,000</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Total Cost -->
+    <div class="kpi-card" id="kpi-card-cost" onclick="openModal('cost','Total Cost Drill-Down','Cost breakdown by category, project, and resource')">
+      <div class="kpi-card-header">
+        <div class="kpi-icon" style="background:#d1fae5;">💸</div>
+        <div class="kpi-title-block">
+          <div class="kpi-title">Total Cost</div>
+          <div class="kpi-subtitle">Actual vs Planned cost consumption
+            <div class="tooltip-wrap"><span class="tooltip-icon">ⓘ</span><div class="tooltip-box">Cost Consumption = (Actual Cost ÷ Planned Cost) × 100. High cost consumption with low revenue achievement signals margin risk. Ideal: cost % ≤ revenue %.</div></div>
+          </div>
+          <div class="kpi-owner">Owner (Finance): Sambasivam</div>
+        </div>
+        <button class="kpi-drill-btn" onclick="event.stopPropagation();openModal('cost','Total Cost Drill-Down','Cost breakdown by category, project, and resource')">🔍 Drill</button>
+      </div>
+      <div class="kpi-body">
+        <div>
+          <div class="kpi-donut-wrap"><canvas id="costDonut"></canvas><div class="kpi-pct" id="cost-pct">81%</div></div>
+          <div class="kpi-label">Cost Consumption</div>
+        </div>
+        <div class="kpi-metrics">
+          <div class="kpi-metric"><span class="kpi-metric-label">Actual</span><span class="kpi-metric-value" id="cost-actual" style="color:var(--teal);">₹1,37,00,000</span></div>
+          <div class="kpi-metric"><span class="kpi-metric-label">Plan</span><span class="kpi-metric-value" id="cost-plan">₹1,70,00,000</span></div>
+          <div class="kpi-bar-wrap"><div class="kpi-bar" id="cost-bar" style="width:81%;background:var(--teal);"></div></div>
+          <div class="kpi-metric" style="margin-top:4px;"><span class="kpi-metric-label">Variance</span><span class="kpi-metric-value" id="cost-variance" style="color:var(--green);">▲ ₹33,00,000 saved</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Total Margin -->
+    <div class="kpi-card" id="kpi-card-margin">
+      <div class="kpi-card-header">
+        <div class="kpi-icon" style="background:#ede9fe;">📊</div>
+        <div class="kpi-title-block">
+          <div class="kpi-title">Total Margin</div>
+          <div class="kpi-subtitle">Profit margin: Revenue minus Cost
+            <div class="tooltip-wrap"><span class="tooltip-icon">ⓘ</span><div class="tooltip-box">Margin Achievement = (Actual Margin ÷ Planned Margin) × 100. Actual Margin = Actual Revenue − Actual Cost. A margin below plan indicates pricing, cost overrun, or scope creep issues.</div></div>
+          </div>
+          <div class="kpi-visible-to">Visible To: <span>Vishwas Mahajan (CEO) &amp; Saji Unni (Delivery Head)</span></div>
+        </div>
+        <button class="kpi-drill-btn" onclick="openModal('margin','Total Margin Drill-Down','Margin analysis by project, phase, and billing type')">🔍 Drill</button>
+      </div>
+      <div class="kpi-body">
+        <div>
+          <div class="kpi-donut-wrap"><canvas id="marginDonut"></canvas><div class="kpi-pct" id="margin-pct">43%</div></div>
+          <div class="kpi-label">Margin Achievement</div>
+        </div>
+        <div class="kpi-metrics">
+          <div class="kpi-metric"><span class="kpi-metric-label">Actual</span><span class="kpi-metric-value" id="margin-actual" style="color:var(--accent);">₹13,00,000</span></div>
+          <div class="kpi-metric"><span class="kpi-metric-label">Plan</span><span class="kpi-metric-value" id="margin-plan">₹30,00,000</span></div>
+          <div class="kpi-bar-wrap"><div class="kpi-bar" id="margin-bar" style="width:43%;background:var(--accent);"></div></div>
+          <div class="kpi-metric" style="margin-top:4px;"><span class="kpi-metric-label">Margin %</span><span class="kpi-metric-value" id="margin-marginpct" style="color:var(--red);">7.6% <small>(Target: 15%)</small></span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ROW 1: Task Status + Timesheet + Planned vs Actual -->
+  <div class="section-divider">📋 Operational Metrics — Task health, time tracking, and delivery performance</div>
+  <div class="widgets-row">
+
+    <!-- Task by Status -->
+    <div class="widget" id="widget-taskstatus">
+      <div class="widget-header">
+        <div>
+          <div class="widget-title">Task by Status</div>
+          <div class="widget-subtitle">Distribution of all tasks by current state. Planned = not started; Delayed = past due date; At Risk = at danger of missing deadline.
+            <div class="tooltip-wrap"><span class="tooltip-icon"> ⓘ</span><div class="tooltip-box">Task Health Score = (On Track + Completed) ÷ Total × 100. Currently 48% healthy tasks. Target &gt;70%.</div></div>
+          </div>
+        </div>
+        <div class="widget-actions">
+          <button class="widget-btn" onclick="openModal('tasks','Task Status Drill-Down','All tasks with filters by status, assignee, project')">🔍 Drill Down</button>
+        </div>
+      </div>
+      <div class="widget-body">
+        <div class="task-status-body">
+          <div>
+            <div class="task-donut-wrap"><canvas id="taskDonut"></canvas>
+              <div class="task-center"><div class="task-total-num" id="task-total-num">80</div><div class="task-total-lbl">Tasks</div></div>
+            </div>
+          </div>
+          <div class="task-legend">
+            <div class="task-legend-item" onclick="openModal('tasks','Planned Tasks','Tasks not yet started')">
+              <div class="legend-dot" style="background:#3b82f6;"></div><div class="legend-label">Planned</div><div class="legend-count" id="legend-planned-count">26</div><div class="legend-pct" id="legend-planned-pct">(28%)</div>
+            </div>
+            <div class="task-legend-item" onclick="openModal('tasks','On Track Tasks','Tasks progressing as scheduled')">
+              <div class="legend-dot" style="background:#22c55e;"></div><div class="legend-label">On Track</div><div class="legend-count" id="legend-ontrack-count">18</div><div class="legend-pct" id="legend-ontrack-pct">(20%)</div>
+            </div>
+            <div class="task-legend-item" onclick="openModal('tasks','Delayed Tasks','Tasks past their planned end date')">
+              <div class="legend-dot" style="background:#f97316;"></div><div class="legend-label">Delayed</div><div class="legend-count" id="legend-delayed-count">12</div><div class="legend-pct" id="legend-delayed-pct">(13%)</div>
+            </div>
+            <div class="task-legend-item" onclick="openModal('tasks','At Risk Tasks','Tasks with risk of delay or failure')">
+              <div class="legend-dot" style="background:#ef4444;"></div><div class="legend-label">At Risk</div><div class="legend-count" id="legend-atrisk-count">9</div><div class="legend-pct" id="legend-atrisk-pct">(10%)</div>
+            </div>
+            <div class="task-legend-item" onclick="openModal('tasks','Completed Tasks','Successfully delivered tasks')">
+              <div class="legend-dot" style="background:#94a3b8;"></div><div class="legend-label">Completed</div><div class="legend-count" id="legend-completed-count">15</div><div class="legend-pct" id="legend-completed-pct">(29%)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="widget-footer"><span>Total Tasks: <strong id="task-footer-total">80</strong></span></div>
+    </div>
+
+    <!-- Timesheet Summary -->
+    <div class="widget" id="widget-timesheet">
+      <div class="widget-header">
+        <div>
+          <div class="widget-title">Time Sheet Summary</div>
+          <div class="widget-subtitle">Billable vs non-billable hours and compliance rate. Compliance = timesheets submitted on time.
+            <div class="tooltip-wrap"><span class="tooltip-icon"> ⓘ</span><div class="tooltip-box">Timesheet Compliance = Timesheets Submitted on Time ÷ Total Expected Timesheets × 100. Below 90% triggers PM review. Target: ≥95%.</div></div>
+          </div>
+        </div>
+        <div class="widget-actions">
+          <button class="widget-btn" onclick="openModal('timesheet','Timesheet Drill-Down','Resource-level timesheet breakdown')">🔍 Drill Down</button>
+        </div>
+      </div>
+      <div class="widget-body">
+        <div class="timesheet-body">
+          <div>
+            <div class="ts-donut-wrap"><canvas id="tsDonut"></canvas>
+              <div class="ts-center"><div class="ts-total" id="ts-total">145</div><div class="ts-lbl">Total Hrs</div></div>
+            </div>
+          </div>
+          <div class="ts-metrics">
+            <div class="ts-metric">
+              <div class="ts-metric-header">
+                <span class="ts-metric-label"><span class="dot" style="background:#4f46e5;"></span>Billable Hours</span>
+                <span class="ts-metric-value" id="ts-billable-value">125 Hrs (86%)</span>
+              </div>
+              <div class="ts-bar-wrap"><div class="ts-bar" id="ts-billable-bar" style="width:86%;background:#4f46e5;"></div></div>
+            </div>
+            <div class="ts-metric">
+              <div class="ts-metric-header">
+                <span class="ts-metric-label"><span class="dot" style="background:#a78bfa;"></span>Non-Billable Hours</span>
+                <span class="ts-metric-value" id="ts-nonbillable-value">20 Hrs (14%)</span>
+              </div>
+              <div class="ts-bar-wrap"><div class="ts-bar" id="ts-nonbillable-bar" style="width:14%;background:#a78bfa;"></div></div>
+            </div>
+            <div class="ts-compliance">
+              <span class="ts-compliance-label">Timesheet Compliance</span>
+              <span class="ts-compliance-value" id="ts-compliance-value">92%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="widget-footer"><span>Reviewed By (Delivery): <a href="#">Saji Unni</a></span></div>
+    </div>
+
+    <!-- Planned vs Actual – All Project Status -->
+    <div class="widget" id="widget-pva">
+      <div class="widget-header">
+        <div>
+          <div class="widget-title">Planned vs Actual — All Project Status</div>
+          <div class="widget-subtitle">Monthly comparison of actual hours logged against planned hours, with billable % trend.
+            <div class="tooltip-wrap"><span class="tooltip-icon"> ⓘ</span><div class="tooltip-box">Schedule Performance Index (SPI) = Actual ÷ Planned. SPI &gt;1 = ahead of schedule. Billable % = Billable Hours ÷ Total Hours × 100. Target billable% ≥85%.</div></div>
+          </div>
+        </div>
+        <div class="widget-actions">
+          <button class="widget-btn" onclick="openModal('pva','Planned vs Actual Drill-Down','Month-by-month and project-by-project analysis')">🔍 Drill Down</button>
+        </div>
+      </div>
+      <div class="widget-body">
+        <div class="pva-legend">
+          <div class="pva-legend-item"><div class="pva-legend-dot" style="background:#1a3c8f;"></div>Actual</div>
+          <div class="pva-legend-item"><div class="pva-legend-dot" style="background:#93c5fd;"></div>Planned</div>
+          <div class="pva-legend-item"><div class="pva-legend-line" style="background:#f59e0b;border-top:2px dashed #f59e0b;height:0;"></div><span style="margin-left:4px;">Billable %</span></div>
+        </div>
+        <div class="pva-chart-wrap"><canvas id="pvaChart"></canvas></div>
+      </div>
+      <div class="widget-footer"><span>Owner (Delivery): <a href="#">Saji Unni</a></span></div>
+    </div>
+
+  </div>
+
+  <!-- ROW 2: Task Table + Horizontal Bar -->
+  <div class="section-divider">📌 Project-Level Details — Expand rows to view sub-tasks; click tasks for full details</div>
+  <div class="widgets-row-2">
+
+    <!-- Main Tasks Next Up -->
+    <div class="widget">
+      <div class="widget-header">
+        <div>
+          <div class="widget-title">Main Tasks Next Up</div>
+          <div class="widget-subtitle">Upcoming critical tasks sorted by planned end date. Click ▶ to expand sub-tasks. Risk = PM's assessment of task health. Time Logged = hours spent so far.</div>
+        </div>
+        <div class="widget-actions">
+          <button class="widget-btn" onclick="openModal('tasklist','All Tasks','Complete task register with full drill-down')">🔍 All Tasks</button>
+        </div>
+      </div>
+      <div class="widget-body" style="padding:0;">
+        <div style="overflow-x:auto;">
+        <table class="task-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th>Project</th>
+              <th>Client</th>
+              <th>Task</th>
+              <th>Risk</th>
+              <th>Planned End</th>
+              <th>Time Logged</th>
+              <th>Responsible</th>
+              <th>Completion</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Project A – Mc Mary Jones Corp -->
+            <tr onclick="toggleSubRows('pa')">
+              <td><button class="expand-btn" id="btn-pa">▶</button></td>
+              <td class="project-name">ERP Integration<br><span class="client-name-tag">Mc Mary Jones Corp</span></td>
+              <td style="font-size:11px;color:var(--text-muted);font-style:italic;">Project A</td>
+              <td class="task-name">Requirements Finalization</td>
+              <td><span class="status-badge status-on-track"><span class="status-dot"></span>On Track</span></td>
+              <td>25-May-2026</td>
+              <td style="font-family:'DM Mono',monospace;">14:00</td>
+              <td>Anwar Shaikh</td>
+              <td><div class="table-progress"><div class="table-progress-bar"><div class="table-progress-fill" style="width:80%;background:var(--primary);"></div></div><span class="table-progress-pct">80%</span></div></td>
+            </tr>
+            <tr class="sub-row" id="pa-sub-1"><td></td><td></td><td></td><td style="padding-left:20px;"><span class="sub-task-icon">↳</span>Business Requirements Document</td><td><span class="status-badge status-on-track"><span class="status-dot"></span>On Track</span></td><td>20-May-2026</td><td style="font-family:'DM Mono',monospace;">6:00</td><td>Anwar Shaikh</td><td><div class="table-progress"><div class="table-progress-bar"><div class="table-progress-fill" style="width:90%;background:var(--green);"></div></div><span class="table-progress-pct">90%</span></div></td></tr>
+            <tr class="sub-row" id="pa-sub-2"><td></td><td></td><td></td><td style="padding-left:20px;"><span class="sub-task-icon">↳</span>Stakeholder Sign-Off Workshop</td><td><span class="status-badge status-planned"><span class="status-dot"></span>Planned</span></td><td>25-May-2026</td><td style="font-family:'DM Mono',monospace;">2:00</td><td>Anand Gadhawe</td><td><div class="table-progress"><div class="table-progress-bar"><div class="table-progress-fill" style="width:30%;background:var(--primary);"></div></div><span class="table-progress-pct">30%</span></div></td></tr>
+            <tr class="sub-row" id="pa-sub-3"><td></td><td></td><td></td><td style="padding-left:20px;"><span class="sub-task-icon">↳</span>Technical Feasibility Review</td><td><span class="status-badge status-on-track"><span class="status-dot"></span>On Track</span></td><td>22-May-2026</td><td style="font-family:'DM Mono',monospace;">6:00</td><td>Rahul Gupta</td><td><div class="table-progress"><div class="table-progress-bar"><div class="table-progress-fill" style="width:75%;background:var(--green);"></div></div><span class="table-progress-pct">75%</span></div></td></tr>
+
+            <!-- Project B – TechNova Inc -->
+            <tr onclick="toggleSubRows('pb')">
+              <td><button class="expand-btn" id="btn-pb">▶</button></td>
+              <td class="project-name">Cloud Migration<br><span class="client-name-tag">TechNova Inc</span></td>
+              <td style="font-size:11px;color:var(--text-muted);font-style:italic;">Project B</td>
+              <td class="task-name">Budget Approval</td>
+              <td><span class="status-badge status-at-risk"><span class="status-dot"></span>At Risk</span></td>
+              <td>28-May-2026</td>
+              <td style="font-family:'DM Mono',monospace;">8:00</td>
+              <td>Sambasivam</td>
+              <td><div class="table-progress"><div class="table-progress-bar"><div class="table-progress-fill" style="width:65%;background:var(--amber);"></div></div><span class="table-progress-pct">65%</span></div></td>
+            </tr>
+            <tr class="sub-row" id="pb-sub-1"><td></td><td></td><td></td><td style="padding-left:20px;"><span class="sub-task-icon">↳</span>Cost Estimation Finalization</td><td><span class="status-badge status-at-risk"><span class="status-dot"></span>At Risk</span></td><td>24-May-2026</td><td style="font-family:'DM Mono',monospace;">4:00</td><td>Sambasivam</td><td><div class="table-progress"><div class="table-progress-bar"><div class="table-progress-fill" style="width:60%;background:var(--amber);"></div></div><span class="table-progress-pct">60%</span></div></td></tr>
+            <tr class="sub-row" id="pb-sub-2"><td></td><td></td><td></td><td style="padding-left:20px;"><span class="sub-task-icon">↳</span>Finance Committee Presentation</td><td><span class="status-badge status-planned"><span class="status-dot"></span>Planned</span></td><td>28-May-2026</td><td style="font-family:'DM Mono',monospace;">2:00</td><td>Vishwas Mahajan</td><td><div class="table-progress"><div class="table-progress-bar"><div class="table-progress-fill" style="width:20%;background:var(--primary);"></div></div><span class="table-progress-pct">20%</span></div></td></tr>
+            <tr class="sub-row" id="pb-sub-3"><td></td><td></td><td></td><td style="padding-left:20px;"><span class="sub-task-icon">↳</span>CFO Risk Sign-Off</td><td><span class="status-badge status-planned"><span class="status-dot"></span>Planned</span></td><td>28-May-2026</td><td style="font-family:'DM Mono',monospace;">1:00</td><td>Sambasivam</td><td><div class="table-progress"><div class="table-progress-bar"><div class="table-progress-fill" style="width:0%;background:var(--primary);"></div></div><span class="table-progress-pct">0%</span></div></td></tr>
+
+            <!-- Project C – GlobalRetail Ltd -->
+            <tr onclick="toggleSubRows('pc')">
+              <td><button class="expand-btn" id="btn-pc">▶</button></td>
+              <td class="project-name">Retail Analytics Portal<br><span class="client-name-tag">GlobalRetail Ltd</span></td>
+              <td style="font-size:11px;color:var(--text-muted);font-style:italic;">Project C</td>
+              <td class="task-name">Resource Allocation</td>
+              <td><span class="status-badge status-planned"><span class="status-dot"></span>Planned</span></td>
+              <td>30-May-2026</td>
+              <td style="font-family:'DM Mono',monospace;">6:00</td>
+              <td>Saji Unni</td>
+              <td><div class="table-progress"><div class="table-progress-bar"><div class="table-progress-fill" style="width:40%;background:var(--primary);"></div></div><span class="table-progress-pct">40%</span></div></td>
+            </tr>
+            <tr class="sub-row" id="pc-sub-1"><td></td><td></td><td></td><td style="padding-left:20px;"><span class="sub-task-icon">↳</span>Skill Matrix Mapping</td><td><span class="status-badge status-planned"><span class="status-dot"></span>Planned</span></td><td>26-May-2026</td><td style="font-family:'DM Mono',monospace;">3:00</td><td>Priya Mehta</td><td><div class="table-progress"><div class="table-progress-bar"><div class="table-progress-fill" style="width:50%;background:var(--primary);"></div></div><span class="table-progress-pct">50%</span></div></td></tr>
+            <tr class="sub-row" id="pc-sub-2"><td></td><td></td><td></td><td style="padding-left:20px;"><span class="sub-task-icon">↳</span>Onboarding Schedule & Induction</td><td><span class="status-badge status-planned"><span class="status-dot"></span>Planned</span></td><td>30-May-2026</td><td style="font-family:'DM Mono',monospace;">3:00</td><td>Deepika Nair</td><td><div class="table-progress"><div class="table-progress-bar"><div class="table-progress-fill" style="width:25%;background:var(--primary);"></div></div><span class="table-progress-pct">25%</span></div></td></tr>
+
+            <!-- Project D – Sunrise Pharma -->
+            <tr onclick="toggleSubRows('pd')">
+              <td><button class="expand-btn" id="btn-pd">▶</button></td>
+              <td class="project-name">Compliance Tracker<br><span class="client-name-tag">Sunrise Pharma</span></td>
+              <td style="font-size:11px;color:var(--text-muted);font-style:italic;">Project D</td>
+              <td class="task-name">Client Review</td>
+              <td><span class="status-badge status-delayed"><span class="status-dot"></span>Delayed</span></td>
+              <td>02-Jun-2026</td>
+              <td style="font-family:'DM Mono',monospace;">5:00</td>
+              <td>Anand Gadhawe</td>
+              <td><div class="table-progress"><div class="table-progress-bar"><div class="table-progress-fill" style="width:55%;background:var(--red);"></div></div><span class="table-progress-pct">55%</span></div></td>
+            </tr>
+            <tr class="sub-row" id="pd-sub-1"><td></td><td></td><td></td><td style="padding-left:20px;"><span class="sub-task-icon">↳</span>UAT Demo Preparation</td><td><span class="status-badge status-delayed"><span class="status-dot"></span>Delayed</span></td><td>30-May-2026</td><td style="font-family:'DM Mono',monospace;">3:00</td><td>Anand Gadhawe</td><td><div class="table-progress"><div class="table-progress-bar"><div class="table-progress-fill" style="width:45%;background:var(--red);"></div></div><span class="table-progress-pct">45%</span></div></td></tr>
+            <tr class="sub-row" id="pd-sub-2"><td></td><td></td><td></td><td style="padding-left:20px;"><span class="sub-task-icon">↳</span>Client Feedback Incorporation</td><td><span class="status-badge status-planned"><span class="status-dot"></span>Planned</span></td><td>02-Jun-2026</td><td style="font-family:'DM Mono',monospace;">2:00</td><td>Rahul Gupta</td><td><div class="table-progress"><div class="table-progress-bar"><div class="table-progress-fill" style="width:15%;background:var(--primary);"></div></div><span class="table-progress-pct">15%</span></div></td></tr>
+
+            <!-- Project E – InfraCore Solutions -->
+            <tr onclick="toggleSubRows('pe')">
+              <td><button class="expand-btn" id="btn-pe">▶</button></td>
+              <td class="project-name">Network Modernisation<br><span class="client-name-tag">InfraCore Solutions</span></td>
+              <td style="font-size:11px;color:var(--text-muted);font-style:italic;">Project E</td>
+              <td class="task-name">Governance Review</td>
+              <td><span class="status-badge status-on-track"><span class="status-dot"></span>On Track</span></td>
+              <td>04-Jun-2026</td>
+              <td style="font-family:'DM Mono',monospace;">4:00</td>
+              <td>Jagdish Gawraskar</td>
+              <td><div class="table-progress"><div class="table-progress-bar"><div class="table-progress-fill" style="width:75%;background:var(--green);"></div></div><span class="table-progress-pct">75%</span></div></td>
+            </tr>
+            <tr class="sub-row" id="pe-sub-1"><td></td><td></td><td></td><td style="padding-left:20px;"><span class="sub-task-icon">↳</span>Risk Register Update</td><td><span class="status-badge status-on-track"><span class="status-dot"></span>On Track</span></td><td>01-Jun-2026</td><td style="font-family:'DM Mono',monospace;">2:00</td><td>Jagdish Gawraskar</td><td><div class="table-progress"><div class="table-progress-bar"><div class="table-progress-fill" style="width:80%;background:var(--green);"></div></div><span class="table-progress-pct">80%</span></div></td></tr>
+            <tr class="sub-row" id="pe-sub-2"><td></td><td></td><td></td><td style="padding-left:20px;"><span class="sub-task-icon">↳</span>Regulatory Compliance Sign-Off</td><td><span class="status-badge status-planned"><span class="status-dot"></span>Planned</span></td><td>04-Jun-2026</td><td style="font-family:'DM Mono',monospace;">2:00</td><td>Vishwas Mahajan</td><td><div class="table-progress"><div class="table-progress-bar"><div class="table-progress-fill" style="width:40%;background:var(--primary);"></div></div><span class="table-progress-pct">40%</span></div></td></tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+      <div class="widget-footer"><span>Project Manager (Overall): <a href="#">Anwar Shaikh</a></span></div>
+    </div>
+
+    <!-- Total Planned vs Actual by Project -->
+    <div class="widget" id="widget-hbar">
+      <div class="widget-header">
+        <div>
+          <div class="widget-title">Total Planned vs Actual by Project</div>
+          <div class="widget-subtitle">Horizontal bar chart showing actual hours logged vs planned hours per project. Overshoot = inefficiency or scope creep.
+            <div class="tooltip-wrap"><span class="tooltip-icon"> ⓘ</span><div class="tooltip-box">Efficiency Ratio = Actual ÷ Planned. Ratio &lt;1 = under plan (good or behind). Ratio &gt;1 = over plan (scope creep or inefficiency risk). Click bars for project breakdown.</div></div>
+          </div>
+        </div>
+        <div class="widget-actions">
+          <button class="widget-btn" onclick="openModal('hbar','Planned vs Actual by Project Drill-Down','Resource-level and task-level hour breakdown per project')">🔍 Drill Down</button>
+        </div>
+      </div>
+      <div class="widget-body">
+        <div style="display:flex;gap:12px;margin-bottom:10px;font-size:10px;">
+          <div style="display:flex;align-items:center;gap:5px;"><div style="width:12px;height:12px;border-radius:2px;background:var(--primary);"></div>Actual Hours</div>
+          <div style="display:flex;align-items:center;gap:5px;"><div style="width:12px;height:12px;border-radius:2px;background:#93c5fd;opacity:0.7;"></div>Planned Hours</div>
+        </div>
+        <div class="hbar-chart" id="hbar-chart">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+      <div class="widget-footer"><span>Reviewed By (Governance): <a href="#">Jagdish Gawraskar</a></span></div>
+    </div>
+
+  </div>
+
+  <!-- GOVERNANCE STRIP -->
+  <div class="section-divider">🛡️ Governance &amp; Key Contacts</div>
+  <div class="governance-strip">
+    <div class="gov-item">
+      <div class="gov-icon">👤</div>
+      <div class="gov-info"><div class="gov-title">Executive Sponsor</div><div class="gov-name">Vishwas Mahajan</div><div class="gov-sub">CEO</div></div>
+    </div>
+    <div class="gov-item">
+      <div class="gov-icon">📣</div>
+      <div class="gov-info"><div class="gov-title">Delivery Governance</div><div class="gov-name">Saji Unni</div><div class="gov-sub">Delivery Head</div></div>
+    </div>
+    <div class="gov-item">
+      <div class="gov-icon">₹</div>
+      <div class="gov-info"><div class="gov-title">Finance Governance</div><div class="gov-name">Sambasivam</div><div class="gov-sub">Finance</div></div>
+    </div>
+    <div class="gov-item">
+      <div class="gov-icon">👥</div>
+      <div class="gov-info"><div class="gov-title">Key Contacts</div><div class="gov-name">Anand Gadhawe (Client)</div><div class="gov-sub">Jagdish Gawraskar (Governance)</div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== DRILL DOWN MODAL ===== -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div><div class="modal-title" id="modal-title">Drill Down</div><div class="modal-subtitle" id="modal-subtitle"></div></div>
+      <button class="modal-close" onclick="closeModalDirect()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer" style="display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:11px;color:var(--text-muted);">💡 Data shown for selected filters. Use breadcrumb to navigate back.</span>
+      <button class="btn-apply" onclick="closeModalDirect()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="live-toast" id="live-toast"></div>
+
+<script>
+// ===== MULTISELECT LOGIC =====
+let dropdownStates = {};
+
+function toggleDropdown(id) {
+  const dd = document.getElementById(id + '-dd');
+  const chev = document.getElementById(id + '-chev');
+  const trigger = dd.previousElementSibling;
+  const isOpen = dd.classList.contains('open');
+  // close all
+  document.querySelectorAll('.multiselect-dropdown.open').forEach(d => { d.classList.remove('open'); });
+  document.querySelectorAll('.multiselect-trigger.open').forEach(t => t.classList.remove('open'));
+  document.querySelectorAll('.chevron.open').forEach(c => c.classList.remove('open'));
+  closeTimePeriod();
+  if (!isOpen) {
+    dd.classList.add('open');
+    trigger.classList.add('open');
+    chev.classList.add('open');
+  }
+}
+
+function filterOptions(id, query) {
+  const opts = document.querySelectorAll('#' + id + '-opts .dropdown-option');
+  opts.forEach(opt => {
+    const label = opt.querySelector('.opt-label').textContent.toLowerCase();
+    opt.style.display = label.includes(query.toLowerCase()) ? '' : 'none';
+  });
+}
+
+function selectAll(id) {
+  document.querySelectorAll('#' + id + '-opts .dropdown-option').forEach(opt => {
+    opt.classList.add('selected');
+    opt.querySelector('input').checked = true;
+  });
+}
+
+function clearAll(id) {
+  document.querySelectorAll('#' + id + '-opts .dropdown-option').forEach(opt => {
+    opt.classList.remove('selected');
+    opt.querySelector('input').checked = false;
+  });
+}
+
+function cancelDropdown(id) {
+  document.getElementById(id + '-dd').classList.remove('open');
+  document.getElementById(id + '-chev').classList.remove('open');
+}
+
+function applyDropdown(id) {
+  const selected = [];
+  document.querySelectorAll('#' + id + '-opts .dropdown-option').forEach(opt => {
+    if (opt.querySelector('input').checked) selected.push(opt.dataset.val);
+  });
+  const valEl = document.getElementById(id + '-val');
+  if (selected.length === 0) { valEl.textContent = 'None'; valEl.className = 'multiselect-value placeholder'; }
+  else if (selected.length === 1) { valEl.textContent = selected[0]; valEl.className = 'multiselect-value'; }
+  else { valEl.textContent = selected.length + ' selected'; valEl.className = 'multiselect-value'; }
+  cancelDropdown(id);
+  onFilterChanged();
+}
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.multiselect') && !e.target.closest('.time-period-filter')) {
+    document.querySelectorAll('.multiselect-dropdown.open').forEach(d => d.classList.remove('open'));
+    document.querySelectorAll('.multiselect-trigger.open').forEach(t => t.classList.remove('open'));
+    document.querySelectorAll('.chevron.open').forEach(c => c.classList.remove('open'));
+  }
+});
+
+// Checkbox sync
+document.querySelectorAll('.dropdown-option').forEach(opt => {
+  opt.addEventListener('change', function() {
+    const cb = this.querySelector('input');
+    if (cb.checked) opt.classList.add('selected');
+    else opt.classList.remove('selected');
+  });
+  opt.querySelector('input').addEventListener('change', function() {
+    if (this.checked) opt.classList.add('selected');
+    else opt.classList.remove('selected');
+  });
+  opt.addEventListener('click', function(e) {
+    if (e.target.tagName !== 'INPUT') {
+      const cb = this.querySelector('input');
+      cb.checked = !cb.checked;
+      if (cb.checked) this.classList.add('selected');
+      else this.classList.remove('selected');
+    }
+  });
+});
+
+// ===== TIME PERIOD PICKER =====
+let tpOpen = false;
+function toggleTimePeriod() {
+  const picker = document.getElementById('tp-picker');
+  const chev = document.getElementById('ms-period-chev');
+  document.querySelectorAll('.multiselect-dropdown.open').forEach(d => d.classList.remove('open'));
+  if (tpOpen) { closeTimePeriod(); } else {
+    picker.classList.add('open');
+    chev.classList.add('open');
+    tpOpen = true;
+    renderCalendars();
+  }
+}
+function closeTimePeriod() {
+  document.getElementById('tp-picker').classList.remove('open');
+  document.getElementById('ms-period-chev').classList.remove('open');
+  tpOpen = false;
+}
+function selectPreset(name) {
+  document.querySelectorAll('.tp-preset').forEach(p => p.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  document.getElementById('ms-period-val').textContent = name;
+}
+function applyTimePeriod() {
+  const active = document.querySelector('.tp-preset.active');
+  if (active) document.getElementById('ms-period-val').textContent = active.textContent.trim().replace('▶','').trim();
+  closeTimePeriod();
+  onFilterChanged();
+}
+
+function renderCalendars() {
+  const months = [
+    { name: 'APR 2026', year: 2026, month: 3, start: 15, end: null },
+    { name: 'MAY 2026', year: 2026, month: 4, start: null, end: 12 }
+  ];
+  const ids = ['tp-month-1', 'tp-month-2'];
+  const weekdays = ['M','T','W','T','F','S','S'];
+  months.forEach((m, mi) => {
+    const el = document.getElementById(ids[mi]);
+    const firstDay = new Date(m.year, m.month, 1).getDay();
+    const offset = firstDay === 0 ? 6 : firstDay - 1;
+    const daysInMonth = new Date(m.year, m.month + 1, 0).getDate();
+    let html = `<div class="tp-month-header">${m.name}</div>`;
+    html += `<div class="tp-weekdays">${weekdays.map(d => `<div class="tp-weekday">${d}</div>`).join('')}</div>`;
+    html += `<div class="tp-days">`;
+    for (let i = 0; i < offset; i++) html += `<div class="tp-day empty"></div>`;
+    for (let d = 1; d <= daysInMonth; d++) {
+      let cls = 'tp-day';
+      if (mi === 0 && d === 15) cls += ' selected';
+      if (mi === 1 && d === 12) cls += ' selected';
+      if (mi === 1 && d === 13) cls += ' today';
+      if (mi === 0 && d > 15) cls += ' in-range';
+      if (mi === 1 && d < 12) cls += ' in-range';
+      html += `<div class="${cls}">${d}</div>`;
+    }
+    html += `</div>`;
+    el.innerHTML = html;
+  });
+}
+
+// ===== SUB-ROW TOGGLE =====
+function toggleSubRows(id) {
+  const btn = document.getElementById('btn-' + id);
+  const subRows = document.querySelectorAll('[id^="' + id + '-sub"]');
+  const isOpen = btn.classList.contains('open');
+  btn.classList.toggle('open');
+  subRows.forEach(r => r.classList.toggle('visible'));
+}
+
+// ===== MODAL =====
+const modalData = {
+  revenue: {
+    tabs: ['By Project','By Billing Type','By Month','Raw Data'],
+    content: {
+      'By Project': `
+        <div class="modal-kpi-grid">
+          <div class="modal-kpi"><div class="modal-kpi-val">₹1.7Cr</div><div class="modal-kpi-lbl">Actual Revenue</div></div>
+          <div class="modal-kpi"><div class="modal-kpi-val">₹2.0Cr</div><div class="modal-kpi-lbl">Planned Revenue</div></div>
+          <div class="modal-kpi"><div class="modal-kpi-val">80%</div><div class="modal-kpi-lbl">Achievement</div></div>
+          <div class="modal-kpi"><div class="modal-kpi-val">▼₹30L</div><div class="modal-kpi-lbl">Shortfall</div></div>
+        </div>
+        <table class="drill-table"><thead><tr><th>Project</th><th>Client</th><th>Actual (₹)</th><th>Planned (₹)</th><th>Achievement %</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Project A</strong><br><span style="font-size:10px;color:#64748b;">ERP Integration</span></td><td>Mc Mary Jones Corp</td><td>45,00,000</td><td>50,00,000</td><td>90%</td><td><span class="status-badge status-on-track"><span class="status-dot"></span>On Track</span></td></tr>
+          <tr><td><strong>Project B</strong><br><span style="font-size:10px;color:#64748b;">Cloud Migration</span></td><td>TechNova Inc</td><td>38,00,000</td><td>55,00,000</td><td>69%</td><td><span class="status-badge status-at-risk"><span class="status-dot"></span>At Risk</span></td></tr>
+          <tr><td><strong>Project C</strong><br><span style="font-size:10px;color:#64748b;">Retail Analytics Portal</span></td><td>GlobalRetail Ltd</td><td>32,00,000</td><td>40,00,000</td><td>80%</td><td><span class="status-badge status-on-track"><span class="status-dot"></span>On Track</span></td></tr>
+          <tr><td><strong>Project D</strong><br><span style="font-size:10px;color:#64748b;">Compliance Tracker</span></td><td>Sunrise Pharma</td><td>28,00,000</td><td>30,00,000</td><td>93%</td><td><span class="status-badge status-on-track"><span class="status-dot"></span>On Track</span></td></tr>
+          <tr><td><strong>Project E</strong><br><span style="font-size:10px;color:#64748b;">Network Modernisation</span></td><td>InfraCore Solutions</td><td>27,00,000</td><td>25,00,000</td><td>108%</td><td><span class="status-badge status-completed"><span class="status-dot"></span>Exceeds Plan</span></td></tr>
+        </tbody></table>`,
+      'By Billing Type': `<table class="drill-table"><thead><tr><th>Billing Type</th><th>Actual (₹)</th><th>Planned (₹)</th><th>%</th></tr></thead>
+        <tbody><tr><td>Fixed Price</td><td>90,00,000</td><td>110,00,000</td><td>82%</td></tr>
+        <tr><td>Time &amp; Material</td><td>65,00,000</td><td>75,00,000</td><td>87%</td></tr>
+        <tr><td>Retainer</td><td>15,00,000</td><td>15,00,000</td><td>100%</td></tr></tbody></table>`,
+      'By Month': `<table class="drill-table"><thead><tr><th>Month</th><th>Actual (₹)</th><th>Planned (₹)</th><th>Variance</th></tr></thead>
+        <tbody><tr><td>January</td><td>18,00,000</td><td>22,00,000</td><td style="color:var(--red)">▼4,00,000</td></tr>
+        <tr><td>February</td><td>20,00,000</td><td>22,00,000</td><td style="color:var(--red)">▼2,00,000</td></tr>
+        <tr><td>March</td><td>22,00,000</td><td>22,00,000</td><td style="color:var(--green)">—</td></tr>
+        <tr><td>April</td><td>19,00,000</td><td>22,00,000</td><td style="color:var(--red)">▼3,00,000</td></tr>
+        <tr><td>May (YTD)</td><td>91,00,000</td><td>1,12,00,000</td><td style="color:var(--red)">▼21,00,000</td></tr></tbody></table>`,
+      'Raw Data': `<div class="info-callout">ℹ️ Raw transaction-level data. Export to Excel for further analysis.</div>
+        <table class="drill-table"><thead><tr><th>Date</th><th>Invoice #</th><th>Client</th><th>Project</th><th>Amount (₹)</th><th>Type</th></tr></thead>
+        <tbody><tr><td>01-May-26</td><td>INV-2026-001</td><td>Mc Mary Jones Corp</td><td>Project A</td><td>12,00,000</td><td>Fixed Price</td></tr>
+        <tr><td>05-May-26</td><td>INV-2026-002</td><td>Mc Mary Jones Corp</td><td>Project B</td><td>8,00,000</td><td>T&M</td></tr>
+        <tr><td>10-May-26</td><td>INV-2026-003</td><td>Mc Mary Jones Corp</td><td>Project C</td><td>10,00,000</td><td>Fixed Price</td></tr></tbody></table>`
+    }
+  },
+  cost: {
+    tabs: ['By Cost Category','By Project','By Resource','Trend'],
+    content: {
+      'By Cost Category': `
+        <div class="modal-kpi-grid">
+          <div class="modal-kpi"><div class="modal-kpi-val">₹1.37Cr</div><div class="modal-kpi-lbl">Actual Cost</div></div>
+          <div class="modal-kpi"><div class="modal-kpi-val">₹1.70Cr</div><div class="modal-kpi-lbl">Planned Cost</div></div>
+          <div class="modal-kpi"><div class="modal-kpi-val">81%</div><div class="modal-kpi-lbl">Consumption</div></div>
+          <div class="modal-kpi"><div class="modal-kpi-val">₹33L</div><div class="modal-kpi-lbl">Saved</div></div>
+        </div>
+        <table class="drill-table"><thead><tr><th>Cost Category</th><th>Actual (₹)</th><th>Budget (₹)</th><th>% Used</th><th>Variance</th></tr></thead>
+        <tbody><tr><td>💼 Resource (Labor)</td><td>92,00,000</td><td>1,10,00,000</td><td>84%</td><td style="color:var(--green)">+18L</td></tr>
+        <tr><td>☁️ Infrastructure</td><td>18,00,000</td><td>20,00,000</td><td>90%</td><td style="color:var(--green)">+2L</td></tr>
+        <tr><td>🔧 Tools & Licenses</td><td>12,00,000</td><td>15,00,000</td><td>80%</td><td style="color:var(--green)">+3L</td></tr>
+        <tr><td>✈️ Travel & Expenses</td><td>8,00,000</td><td>10,00,000</td><td>80%</td><td style="color:var(--green)">+2L</td></tr>
+        <tr><td>📋 Overheads</td><td>7,00,000</td><td>15,00,000</td><td>47%</td><td style="color:var(--green)">+8L</td></tr></tbody></table>`,
+      'By Project': `<table class="drill-table"><thead><tr><th>Project</th><th>Client</th><th>Actual Cost</th><th>Budget</th><th>CPI</th><th>Alert</th></tr></thead>
+        <tbody><tr><td><strong>Project A</strong><br><span style="font-size:10px;color:#64748b;">ERP Integration</span></td><td>Mc Mary Jones Corp</td><td>35,00,000</td><td>40,00,000</td><td>0.88</td><td>🟡 Monitor</td></tr>
+        <tr><td><strong>Project B</strong><br><span style="font-size:10px;color:#64748b;">Cloud Migration</span></td><td>TechNova Inc</td><td>42,00,000</td><td>50,00,000</td><td>0.84</td><td>🟡 Monitor</td></tr>
+        <tr><td><strong>Project C</strong><br><span style="font-size:10px;color:#64748b;">Retail Analytics Portal</span></td><td>GlobalRetail Ltd</td><td>28,00,000</td><td>35,00,000</td><td>0.80</td><td>🟢 Good</td></tr>
+        <tr><td><strong>Project D</strong><br><span style="font-size:10px;color:#64748b;">Compliance Tracker</span></td><td>Sunrise Pharma</td><td>20,00,000</td><td>25,00,000</td><td>0.80</td><td>🟢 Good</td></tr>
+        <tr><td><strong>Project E</strong><br><span style="font-size:10px;color:#64748b;">Network Modernisation</span></td><td>InfraCore Solutions</td><td>12,00,000</td><td>20,00,000</td><td>0.60</td><td>🟢 Under budget</td></tr></tbody></table>`,
+      'By Resource': `<table class="drill-table"><thead><tr><th>Resource</th><th>Role</th><th>Hours</th><th>Rate (₹/hr)</th><th>Cost (₹)</th></tr></thead>
+        <tbody><tr><td>Anwar Shaikh</td><td>Project Manager</td><td>120</td><td>3,500</td><td>4,20,000</td></tr>
+        <tr><td>Priya Mehta</td><td>Developer</td><td>160</td><td>2,200</td><td>3,52,000</td></tr>
+        <tr><td>Rahul Gupta</td><td>Architect</td><td>80</td><td>4,000</td><td>3,20,000</td></tr>
+        <tr><td>Deepika Nair</td><td>BA</td><td>100</td><td>2,500</td><td>2,50,000</td></tr></tbody></table>`,
+      'Trend': `<div class="info-callout">📊 Cost trend shows actual vs budgeted cost over time. Rising gap signals scope creep.</div>
+        <table class="drill-table"><thead><tr><th>Month</th><th>Actual</th><th>Budget</th><th>CPI</th></tr></thead>
+        <tbody><tr><td>January</td><td>21,00,000</td><td>25,00,000</td><td>0.84</td></tr>
+        <tr><td>February</td><td>22,00,000</td><td>25,00,000</td><td>0.88</td></tr>
+        <tr><td>March</td><td>24,00,000</td><td>30,00,000</td><td>0.80</td></tr>
+        <tr><td>April</td><td>26,00,000</td><td>30,00,000</td><td>0.87</td></tr>
+        <tr><td>May (YTD)</td><td>44,00,000</td><td>60,00,000</td><td>0.73</td></tr></tbody></table>`
+    }
+  },
+  tasks: {
+    tabs: ['All Tasks','By Project','By Assignee','Delayed & At Risk'],
+    content: {
+      'All Tasks': `<div class="modal-kpi-grid">
+          <div class="modal-kpi"><div class="modal-kpi-val">80</div><div class="modal-kpi-lbl">Total Tasks</div></div>
+          <div class="modal-kpi"><div class="modal-kpi-val">48%</div><div class="modal-kpi-lbl">Health Score</div></div>
+          <div class="modal-kpi"><div class="modal-kpi-val">21</div><div class="modal-kpi-lbl">At Risk / Delayed</div></div>
+          <div class="modal-kpi"><div class="modal-kpi-val">15</div><div class="modal-kpi-lbl">Completed</div></div>
+        </div>
+        <table class="drill-table"><thead><tr><th>Task</th><th>Project</th><th>Client</th><th>Status</th><th>Due</th><th>Assignee</th><th>%Done</th></tr></thead>
+        <tbody>
+          <tr><td>Requirements Finalization</td><td>Project A</td><td>Mc Mary Jones Corp</td><td><span class="status-badge status-on-track"><span class="status-dot"></span>On Track</span></td><td>25-May</td><td>Anwar Shaikh</td><td>80%</td></tr>
+          <tr><td>Budget Approval</td><td>Project B</td><td>TechNova Inc</td><td><span class="status-badge status-at-risk"><span class="status-dot"></span>At Risk</span></td><td>28-May</td><td>Sambasivam</td><td>65%</td></tr>
+          <tr><td>Resource Allocation</td><td>Project C</td><td>GlobalRetail Ltd</td><td><span class="status-badge status-planned"><span class="status-dot"></span>Planned</span></td><td>30-May</td><td>Saji Unni</td><td>40%</td></tr>
+          <tr><td>Client Review</td><td>Project D</td><td>Sunrise Pharma</td><td><span class="status-badge status-delayed"><span class="status-dot"></span>Delayed</span></td><td>02-Jun</td><td>Anand Gadhawe</td><td>55%</td></tr>
+          <tr><td>Governance Review</td><td>Project E</td><td>InfraCore Solutions</td><td><span class="status-badge status-on-track"><span class="status-dot"></span>On Track</span></td><td>04-Jun</td><td>Jagdish Gawraskar</td><td>75%</td></tr>
+        </tbody></table>`,
+      'By Project': `<table class="drill-table"><thead><tr><th>Project</th><th>Client</th><th>Total</th><th>On Track</th><th>Delayed</th><th>At Risk</th><th>Done</th></tr></thead>
+        <tbody><tr><td><strong>Project A</strong></td><td>Mc Mary Jones Corp</td><td>20</td><td>12</td><td>2</td><td>1</td><td>5</td></tr>
+        <tr><td><strong>Project B</strong></td><td>TechNova Inc</td><td>18</td><td>8</td><td>4</td><td>3</td><td>3</td></tr>
+        <tr><td><strong>Project C</strong></td><td>GlobalRetail Ltd</td><td>15</td><td>7</td><td>3</td><td>2</td><td>3</td></tr>
+        <tr><td><strong>Project D</strong></td><td>Sunrise Pharma</td><td>14</td><td>5</td><td>2</td><td>2</td><td>5</td></tr>
+        <tr><td><strong>Project E</strong></td><td>InfraCore Solutions</td><td>13</td><td>4</td><td>1</td><td>1</td><td>7</td></tr></tbody></table>`,
+      'By Assignee': `<table class="drill-table"><thead><tr><th>Assignee</th><th>Assigned</th><th>On Track</th><th>Delayed</th><th>Overdue</th></tr></thead>
+        <tbody><tr><td>Anwar Shaikh</td><td>18</td><td>14</td><td>2</td><td>2</td></tr>
+        <tr><td>Sambasivam</td><td>12</td><td>8</td><td>3</td><td>1</td></tr>
+        <tr><td>Saji Unni</td><td>15</td><td>10</td><td>4</td><td>1</td></tr>
+        <tr><td>Anand Gadhawe</td><td>10</td><td>5</td><td>2</td><td>3</td></tr>
+        <tr><td>Jagdish Gawraskar</td><td>8</td><td>6</td><td>1</td><td>1</td></tr></tbody></table>`,
+      'Delayed & At Risk': `<div class="info-callout">⚠️ These tasks require immediate PM attention. Delayed tasks have passed their planned end date. At Risk tasks are likely to miss their deadline.</div>
+        <table class="drill-table"><thead><tr><th>Task</th><th>Project</th><th>Client</th><th>Status</th><th>Days Overdue</th><th>Action Required</th></tr></thead>
+        <tbody><tr><td>Budget Approval</td><td>Project B</td><td>TechNova Inc</td><td><span class="status-badge status-at-risk"><span class="status-dot"></span>At Risk</span></td><td>—</td><td>🔴 Escalate to CFO</td></tr>
+        <tr><td>Client Review</td><td>Project D</td><td>Sunrise Pharma</td><td><span class="status-badge status-delayed"><span class="status-dot"></span>Delayed</span></td><td>+3 days</td><td>🔴 Client communication required</td></tr>
+        <tr><td>UAT Signoff</td><td>Project B</td><td>TechNova Inc</td><td><span class="status-badge status-delayed"><span class="status-dot"></span>Delayed</span></td><td>+5 days</td><td>🔴 Test case review needed</td></tr></tbody></table>`
+    }
+  },
+  timesheet: {
+    tabs: ['By Resource','By Project','Compliance History','Missing Timesheets'],
+    content: {
+      'By Resource': `<div class="modal-kpi-grid">
+          <div class="modal-kpi"><div class="modal-kpi-val">145</div><div class="modal-kpi-lbl">Total Hours</div></div>
+          <div class="modal-kpi"><div class="modal-kpi-val">86%</div><div class="modal-kpi-lbl">Billable %</div></div>
+          <div class="modal-kpi"><div class="modal-kpi-val">92%</div><div class="modal-kpi-lbl">Compliance</div></div>
+          <div class="modal-kpi"><div class="modal-kpi-val">8%</div><div class="modal-kpi-lbl">Missing</div></div>
+        </div>
+        <table class="drill-table"><thead><tr><th>Resource</th><th>Billable Hrs</th><th>Non-Billable</th><th>Total</th><th>Submitted?</th></tr></thead>
+        <tbody><tr><td>Anwar Shaikh</td><td>36</td><td>4</td><td>40</td><td>✅</td></tr>
+        <tr><td>Priya Mehta</td><td>32</td><td>6</td><td>38</td><td>✅</td></tr>
+        <tr><td>Rahul Gupta</td><td>28</td><td>4</td><td>32</td><td>⚠️ Late</td></tr>
+        <tr><td>Deepika Nair</td><td>20</td><td>5</td><td>25</td><td>❌ Missing</td></tr>
+        <tr><td>Saji Unni</td><td>9</td><td>1</td><td>10</td><td>✅</td></tr></tbody></table>`,
+      'By Project': `<table class="drill-table"><thead><tr><th>Project</th><th>Client</th><th>Billable Hrs</th><th>Non-Billable</th><th>% Billable</th></tr></thead>
+        <tbody><tr><td><strong>Project A</strong></td><td>Mc Mary Jones Corp</td><td>42</td><td>5</td><td>89%</td></tr>
+        <tr><td><strong>Project B</strong></td><td>TechNova Inc</td><td>35</td><td>6</td><td>85%</td></tr>
+        <tr><td><strong>Project C</strong></td><td>GlobalRetail Ltd</td><td>28</td><td>4</td><td>88%</td></tr>
+        <tr><td><strong>Project D</strong></td><td>Sunrise Pharma</td><td>20</td><td>5</td><td>80%</td></tr></tbody></table>`,
+      'Compliance History': `<table class="drill-table"><thead><tr><th>Week</th><th>Expected</th><th>Submitted</th><th>Compliance %</th></tr></thead>
+        <tbody><tr><td>W1 May 26</td><td>25</td><td>24</td><td>96%</td></tr>
+        <tr><td>W2 May 26</td><td>25</td><td>23</td><td>92%</td></tr>
+        <tr><td>W3 May 26 (current)</td><td>25</td><td>22</td><td>88%</td></tr></tbody></table>`,
+      'Missing Timesheets': `<div class="info-callout">⚠️ Resources below have not submitted timesheets. PM to follow up immediately.</div>
+        <table class="drill-table"><thead><tr><th>Resource</th><th>Week Missing</th><th>Project</th><th>Client</th><th>Hours Expected</th></tr></thead>
+        <tbody><tr><td>Deepika Nair</td><td>W2 May 26</td><td>Project C</td><td>GlobalRetail Ltd</td><td>40</td></tr>
+        <tr><td>Rahul Gupta</td><td>W3 May 26</td><td>Project A</td><td>Mc Mary Jones Corp</td><td>40</td></tr></tbody></table>`
+    }
+  },
+  pva: {
+    tabs: ['Monthly Trend','By Project','SPI Analysis','Billable % Trend'],
+    content: {
+      'Monthly Trend': `<div class="modal-kpi-grid">
+          <div class="modal-kpi"><div class="modal-kpi-val">0.87</div><div class="modal-kpi-lbl">Avg SPI</div></div>
+          <div class="modal-kpi"><div class="modal-kpi-val">86%</div><div class="modal-kpi-lbl">Avg Billable%</div></div>
+          <div class="modal-kpi"><div class="modal-kpi-val">Jan–Sep</div><div class="modal-kpi-lbl">Period</div></div>
+          <div class="modal-kpi"><div class="modal-kpi-val">145 hrs</div><div class="modal-kpi-lbl">May Hours</div></div>
+        </div>
+        <table class="drill-table"><thead><tr><th>Month</th><th>Actual Hrs</th><th>Planned Hrs</th><th>SPI</th><th>Billable %</th></tr></thead>
+        <tbody><tr><td>January</td><td>95</td><td>110</td><td>0.86</td><td>84%</td></tr>
+        <tr><td>February</td><td>105</td><td>110</td><td>0.95</td><td>86%</td></tr>
+        <tr><td>March</td><td>120</td><td>115</td><td>1.04</td><td>88%</td></tr>
+        <tr><td>April</td><td>115</td><td>120</td><td>0.96</td><td>90%</td></tr>
+        <tr><td>May</td><td>145</td><td>140</td><td>1.04</td><td>86%</td></tr></tbody></table>`,
+      'By Project': `<table class="drill-table"><thead><tr><th>Project</th><th>Client</th><th>Actual</th><th>Planned</th><th>SPI</th><th>Status</th></tr></thead>
+        <tbody><tr><td><strong>Project A</strong></td><td>Mc Mary Jones Corp</td><td>101</td><td>120</td><td>0.84</td><td>🟡 Slightly behind</td></tr>
+        <tr><td><strong>Project B</strong></td><td>TechNova Inc</td><td>118</td><td>140</td><td>0.84</td><td>🟡 Slightly behind</td></tr>
+        <tr><td><strong>Project C</strong></td><td>GlobalRetail Ltd</td><td>80</td><td>110</td><td>0.73</td><td>🔴 Behind schedule</td></tr>
+        <tr><td><strong>Project D</strong></td><td>Sunrise Pharma</td><td>63</td><td>90</td><td>0.70</td><td>🔴 Behind schedule</td></tr>
+        <tr><td><strong>Project E</strong></td><td>InfraCore Solutions</td><td>77</td><td>100</td><td>0.77</td><td>🟡 Monitor</td></tr>
+        <tr><td><strong>Project F</strong></td><td>FinEdge Capital</td><td>89</td><td>120</td><td>0.74</td><td>🔴 Behind schedule</td></tr></tbody></table>`,
+      'SPI Analysis': `<div class="info-callout">📐 SPI (Schedule Performance Index) = Actual ÷ Planned. SPI &lt; 0.85 is a red flag requiring escalation. SPI &gt; 1.0 means ahead of plan.</div>
+        <table class="drill-table"><thead><tr><th>Metric</th><th>Value</th><th>Benchmark</th><th>Status</th></tr></thead>
+        <tbody><tr><td>Portfolio SPI</td><td>0.87</td><td>≥0.90</td><td>🟡 Below target</td></tr>
+        <tr><td>Worst project SPI</td><td>0.70 (Proj D)</td><td>≥0.85</td><td>🔴 Escalate</td></tr>
+        <tr><td>Best project SPI</td><td>1.04 (Proj A,May)</td><td>≥0.90</td><td>🟢 On track</td></tr></tbody></table>`,
+      'Billable % Trend': `<table class="drill-table"><thead><tr><th>Month</th><th>Billable Hrs</th><th>Total Hrs</th><th>Billable %</th><th>Target</th></tr></thead>
+        <tbody><tr><td>Jan</td><td>80</td><td>95</td><td>84%</td><td>85%</td></tr>
+        <tr><td>Feb</td><td>90</td><td>105</td><td>86%</td><td>85%</td></tr>
+        <tr><td>Mar</td><td>106</td><td>120</td><td>88%</td><td>85%</td></tr>
+        <tr><td>Apr</td><td>104</td><td>115</td><td>90%</td><td>85%</td></tr>
+        <tr><td>May</td><td>125</td><td>145</td><td>86%</td><td>85%</td></tr></tbody></table>`
+    }
+  },
+  margin: {
+    tabs: ['Summary','By Project','Margin Trend','Improvement Levers'],
+    content: {
+      'Summary': `<div class="modal-kpi-grid">
+          <div class="modal-kpi"><div class="modal-kpi-val">₹13L</div><div class="modal-kpi-lbl">Actual Margin</div></div>
+          <div class="modal-kpi"><div class="modal-kpi-val">₹30L</div><div class="modal-kpi-lbl">Planned Margin</div></div>
+          <div class="modal-kpi"><div class="modal-kpi-val">7.6%</div><div class="modal-kpi-lbl">Margin %</div></div>
+          <div class="modal-kpi"><div class="modal-kpi-val">43%</div><div class="modal-kpi-lbl">Achievement</div></div>
+        </div>
+        <div class="info-callout">🔴 Margin is critically below the 15% target. Root causes: (1) Revenue shortfall of ₹30L, (2) Fixed costs not scaling with revenue, (3) Scope additions not billed.</div>`,
+      'By Project': `<table class="drill-table"><thead><tr><th>Project</th><th>Client</th><th>Revenue</th><th>Cost</th><th>Margin</th><th>Margin %</th></tr></thead>
+        <tbody><tr><td><strong>Project A</strong><br><span style="font-size:10px;color:#64748b;">ERP Integration</span></td><td>Mc Mary Jones Corp</td><td>45L</td><td>35L</td><td>10L</td><td>22%</td></tr>
+        <tr><td><strong>Project B</strong><br><span style="font-size:10px;color:#64748b;">Cloud Migration</span></td><td>TechNova Inc</td><td>38L</td><td>42L</td><td>-4L</td><td>-11% 🔴</td></tr>
+        <tr><td><strong>Project C</strong><br><span style="font-size:10px;color:#64748b;">Retail Analytics Portal</span></td><td>GlobalRetail Ltd</td><td>32L</td><td>28L</td><td>4L</td><td>13%</td></tr>
+        <tr><td><strong>Project D</strong><br><span style="font-size:10px;color:#64748b;">Compliance Tracker</span></td><td>Sunrise Pharma</td><td>28L</td><td>20L</td><td>8L</td><td>29%</td></tr>
+        <tr><td><strong>Project E</strong><br><span style="font-size:10px;color:#64748b;">Network Modernisation</span></td><td>InfraCore Solutions</td><td>27L</td><td>12L</td><td>15L</td><td>56%</td></tr></tbody></table>`,
+      'Margin Trend': `<table class="drill-table"><thead><tr><th>Month</th><th>Actual Margin</th><th>Planned Margin</th><th>Margin %</th></tr></thead>
+        <tbody><tr><td>January</td><td>2.5L</td><td>5L</td><td>11%</td></tr>
+        <tr><td>February</td><td>3L</td><td>5L</td><td>13%</td></tr>
+        <tr><td>March</td><td>2L</td><td>5L</td><td>8%</td></tr>
+        <tr><td>April</td><td>2.5L</td><td>7.5L</td><td>11%</td></tr>
+        <tr><td>May (YTD)</td><td>3L</td><td>7.5L</td><td>3%</td></tr></tbody></table>`,
+      'Improvement Levers': `<div class="info-callout">💡 These are actionable levers to improve margin. Prioritize highest-impact items first.</div>
+        <table class="drill-table"><thead><tr><th>Lever</th><th>Potential Impact</th><th>Owner</th><th>Timeframe</th></tr></thead>
+        <tbody><tr><td>Bill unlogged scope in Project B</td><td>+₹8L</td><td>Anwar Shaikh</td><td>Immediate</td></tr>
+        <tr><td>Reduce non-billable hours by 5%</td><td>+₹3L</td><td>Saji Unni</td><td>1 month</td></tr>
+        <tr><td>Renegotiate Project B rates</td><td>+₹5L</td><td>Vishwas Mahajan</td><td>Next contract</td></tr>
+        <tr><td>Automate testing in Project C</td><td>+₹2L</td><td>Tech Lead</td><td>Q2</td></tr></tbody></table>`
+    }
+  },
+  hbar: {
+    tabs: ['By Project','By Resource','Variance Analysis','Forecast'],
+    content: {
+      'By Project': `<div class="modal-kpi-grid">
+          <div class="modal-kpi"><div class="modal-kpi-val">528</div><div class="modal-kpi-lbl">Total Actual Hrs</div></div>
+          <div class="modal-kpi"><div class="modal-kpi-val">680</div><div class="modal-kpi-lbl">Total Planned Hrs</div></div>
+          <div class="modal-kpi"><div class="modal-kpi-val">0.78</div><div class="modal-kpi-lbl">Portfolio SPI</div></div>
+          <div class="modal-kpi"><div class="modal-kpi-val">152 hrs</div><div class="modal-kpi-lbl">Behind Plan</div></div>
+        </div>
+        <table class="drill-table"><thead><tr><th>Project</th><th>Client</th><th>Actual Hrs</th><th>Planned Hrs</th><th>Variance</th><th>SPI</th></tr></thead>
+        <tbody><tr><td><strong>Project A</strong><br><span style="font-size:10px;color:#64748b;">ERP Integration</span></td><td>Mc Mary Jones Corp</td><td>101</td><td>120</td><td>-19</td><td>0.84</td></tr>
+        <tr><td><strong>Project B</strong><br><span style="font-size:10px;color:#64748b;">Cloud Migration</span></td><td>TechNova Inc</td><td>118</td><td>140</td><td>-22</td><td>0.84</td></tr>
+        <tr><td><strong>Project C</strong><br><span style="font-size:10px;color:#64748b;">Retail Analytics Portal</span></td><td>GlobalRetail Ltd</td><td>80</td><td>110</td><td>-30</td><td>0.73</td></tr>
+        <tr><td><strong>Project D</strong><br><span style="font-size:10px;color:#64748b;">Compliance Tracker</span></td><td>Sunrise Pharma</td><td>63</td><td>90</td><td>-27</td><td>0.70</td></tr>
+        <tr><td><strong>Project E</strong><br><span style="font-size:10px;color:#64748b;">Network Modernisation</span></td><td>InfraCore Solutions</td><td>77</td><td>100</td><td>-23</td><td>0.77</td></tr>
+        <tr><td><strong>Project F</strong><br><span style="font-size:10px;color:#64748b;">Data Warehouse</span></td><td>FinEdge Capital</td><td>89</td><td>120</td><td>-31</td><td>0.74</td></tr></tbody></table>`,
+      'By Resource': `<table class="drill-table"><thead><tr><th>Resource</th><th>Project</th><th>Client</th><th>Actual</th><th>Planned</th><th>Util%</th></tr></thead>
+        <tbody><tr><td>Anwar Shaikh</td><td>Project A</td><td>Mc Mary Jones Corp</td><td>36</td><td>40</td><td>90%</td></tr>
+        <tr><td>Priya Mehta</td><td>Project B</td><td>TechNova Inc</td><td>32</td><td>40</td><td>80%</td></tr>
+        <tr><td>Rahul Gupta</td><td>Project C</td><td>GlobalRetail Ltd</td><td>28</td><td>40</td><td>70%</td></tr>
+        <tr><td>Deepika Nair</td><td>Project D</td><td>Sunrise Pharma</td><td>18</td><td>40</td><td>45%</td></tr></tbody></table>`,
+      'Variance Analysis': `<div class="info-callout">📊 Variance = Actual − Planned. Negative = under-delivery. Root causes should be captured in status reports.</div>
+        <table class="drill-table"><thead><tr><th>Project</th><th>Root Cause</th><th>Impact</th><th>Action</th></tr></thead>
+        <tbody><tr><td>Project C</td><td>Resource onboarding delayed</td><td>High</td><td>Escalate to HR</td></tr>
+        <tr><td>Project D</td><td>Client feedback delay</td><td>Medium</td><td>Send reminder</td></tr>
+        <tr><td>Project F</td><td>Technical dependency</td><td>High</td><td>Architecture review</td></tr></tbody></table>`,
+      'Forecast': `<table class="drill-table"><thead><tr><th>Project</th><th>Remaining Hrs</th><th>Forecast EAC</th><th>Original Plan</th><th>Overrun?</th></tr></thead>
+        <tbody><tr><td>Project A</td><td>60</td><td>161</td><td>180</td><td>🟢 Under</td></tr>
+        <tr><td>Project B</td><td>80</td><td>198</td><td>210</td><td>🟢 Under</td></tr>
+        <tr><td>Project C</td><td>85</td><td>165</td><td>165</td><td>🟡 On plan</td></tr>
+        <tr><td>Project D</td><td>72</td><td>135</td><td>135</td><td>🟡 On plan</td></tr></tbody></table>`
+    }
+  },
+  stakeholder: { tabs: ['Profile','Responsibilities'], content: { 'Profile': `<p style="color:var(--text-muted);font-size:13px;">Stakeholder profile and contact details would be shown here.</p>`, 'Responsibilities': `<p style="color:var(--text-muted);font-size:13px;">Responsibilities and ownership details would be shown here.</p>` } },
+  tasklist: {
+    tabs: ['All Tasks', 'By Project & Client', 'Overdue & At Risk', 'Completed'],
+    content: {
+      'All Tasks': `
+        <div class="modal-kpi-grid">
+          <div class="modal-kpi"><div class="modal-kpi-val">37</div><div class="modal-kpi-lbl">Total Tasks</div></div>
+          <div class="modal-kpi"><div class="modal-kpi-val">13</div><div class="modal-kpi-lbl">On Track</div></div>
+          <div class="modal-kpi"><div class="modal-kpi-val">9</div><div class="modal-kpi-lbl">Delayed / At Risk</div></div>
+          <div class="modal-kpi"><div class="modal-kpi-val">8</div><div class="modal-kpi-lbl">Completed</div></div>
+        </div>
+        <table class="drill-table">
+          <thead><tr><th>#</th><th>Task Name</th><th>Project</th><th>Client</th><th>Status</th><th>Due Date</th><th>Assignee</th><th>Priority</th><th>% Done</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>Business Requirements Document</td><td>Project A – ERP Integration</td><td>Mc Mary Jones Corp</td><td><span class="status-badge status-on-track"><span class="status-dot"></span>On Track</span></td><td>20-May-2026</td><td>Anwar Shaikh</td><td>🔴 High</td><td>90%</td></tr>
+            <tr><td>2</td><td>Stakeholder Sign-Off Workshop</td><td>Project A – ERP Integration</td><td>Mc Mary Jones Corp</td><td><span class="status-badge status-planned"><span class="status-dot"></span>Planned</span></td><td>25-May-2026</td><td>Anand Gadhawe</td><td>🔴 High</td><td>30%</td></tr>
+            <tr><td>3</td><td>Technical Feasibility Review</td><td>Project A – ERP Integration</td><td>Mc Mary Jones Corp</td><td><span class="status-badge status-on-track"><span class="status-dot"></span>On Track</span></td><td>22-May-2026</td><td>Rahul Gupta</td><td>🟡 Medium</td><td>75%</td></tr>
+            <tr><td>4</td><td>Integration Architecture Design</td><td>Project A – ERP Integration</td><td>Mc Mary Jones Corp</td><td><span class="status-badge status-on-track"><span class="status-dot"></span>On Track</span></td><td>28-May-2026</td><td>Rahul Gupta</td><td>🔴 High</td><td>60%</td></tr>
+            <tr><td>5</td><td>Data Migration Strategy</td><td>Project A – ERP Integration</td><td>Mc Mary Jones Corp</td><td><span class="status-badge status-planned"><span class="status-dot"></span>Planned</span></td><td>05-Jun-2026</td><td>Priya Mehta</td><td>🟡 Medium</td><td>20%</td></tr>
+            <tr style="background:#fef9ec;"><td>6</td><td>Cost Estimation Finalization</td><td>Project B – Cloud Migration</td><td>TechNova Inc</td><td><span class="status-badge status-at-risk"><span class="status-dot"></span>At Risk</span></td><td>24-May-2026</td><td>Sambasivam</td><td>🔴 High</td><td>60%</td></tr>
+            <tr style="background:#fef9ec;"><td>7</td><td>Finance Committee Presentation</td><td>Project B – Cloud Migration</td><td>TechNova Inc</td><td><span class="status-badge status-planned"><span class="status-dot"></span>Planned</span></td><td>28-May-2026</td><td>Vishwas Mahajan</td><td>🔴 High</td><td>20%</td></tr>
+            <tr style="background:#fef9ec;"><td>8</td><td>CFO Risk Sign-Off</td><td>Project B – Cloud Migration</td><td>TechNova Inc</td><td><span class="status-badge status-planned"><span class="status-dot"></span>Planned</span></td><td>28-May-2026</td><td>Sambasivam</td><td>🔴 High</td><td>0%</td></tr>
+            <tr style="background:#fff5f5;"><td>9</td><td>UAT Test Case Preparation</td><td>Project B – Cloud Migration</td><td>TechNova Inc</td><td><span class="status-badge status-delayed"><span class="status-dot"></span>Delayed</span></td><td>19-May-2026</td><td>Priya Mehta</td><td>🔴 High</td><td>55%</td></tr>
+            <tr style="background:#fff5f5;"><td>10</td><td>UAT Sign-Off</td><td>Project B – Cloud Migration</td><td>TechNova Inc</td><td><span class="status-badge status-delayed"><span class="status-dot"></span>Delayed</span></td><td>21-May-2026</td><td>Anwar Shaikh</td><td>🔴 High</td><td>40%</td></tr>
+            <tr><td>11</td><td>Skill Matrix Mapping</td><td>Project C – Retail Analytics Portal</td><td>GlobalRetail Ltd</td><td><span class="status-badge status-planned"><span class="status-dot"></span>Planned</span></td><td>26-May-2026</td><td>Priya Mehta</td><td>🟡 Medium</td><td>50%</td></tr>
+            <tr><td>12</td><td>Onboarding Schedule &amp; Induction</td><td>Project C – Retail Analytics Portal</td><td>GlobalRetail Ltd</td><td><span class="status-badge status-planned"><span class="status-dot"></span>Planned</span></td><td>30-May-2026</td><td>Deepika Nair</td><td>🟢 Low</td><td>25%</td></tr>
+            <tr><td>13</td><td>Dashboard Wireframe Design</td><td>Project C – Retail Analytics Portal</td><td>GlobalRetail Ltd</td><td><span class="status-badge status-on-track"><span class="status-dot"></span>On Track</span></td><td>02-Jun-2026</td><td>Deepika Nair</td><td>🟡 Medium</td><td>70%</td></tr>
+            <tr><td>14</td><td>KPI Definition Workshop</td><td>Project C – Retail Analytics Portal</td><td>GlobalRetail Ltd</td><td><span class="status-badge status-completed"><span class="status-dot"></span>Completed</span></td><td>14-May-2026</td><td>Anward Shaikh</td><td>🟡 Medium</td><td>100%</td></tr>
+            <tr style="background:#fff5f5;"><td>15</td><td>UAT Demo Preparation</td><td>Project D – Compliance Tracker</td><td>Sunrise Pharma</td><td><span class="status-badge status-delayed"><span class="status-dot"></span>Delayed</span></td><td>30-May-2026</td><td>Anand Gadhawe</td><td>🔴 High</td><td>45%</td></tr>
+            <tr style="background:#fff5f5;"><td>16</td><td>Regulatory Module Testing</td><td>Project D – Compliance Tracker</td><td>Sunrise Pharma</td><td><span class="status-badge status-delayed"><span class="status-dot"></span>Delayed</span></td><td>22-May-2026</td><td>Priya Mehta</td><td>🔴 High</td><td>35%</td></tr>
+            <tr><td>17</td><td>Client Feedback Incorporation</td><td>Project D – Compliance Tracker</td><td>Sunrise Pharma</td><td><span class="status-badge status-planned"><span class="status-dot"></span>Planned</span></td><td>02-Jun-2026</td><td>Rahul Gupta</td><td>🟡 Medium</td><td>15%</td></tr>
+            <tr><td>18</td><td>Audit Trail Configuration</td><td>Project D – Compliance Tracker</td><td>Sunrise Pharma</td><td><span class="status-badge status-completed"><span class="status-dot"></span>Completed</span></td><td>10-May-2026</td><td>Deepika Nair</td><td>🔴 High</td><td>100%</td></tr>
+            <tr><td>19</td><td>Risk Register Update</td><td>Project E – Network Modernisation</td><td>InfraCore Solutions</td><td><span class="status-badge status-on-track"><span class="status-dot"></span>On Track</span></td><td>01-Jun-2026</td><td>Jagdish Gawraskar</td><td>🟡 Medium</td><td>80%</td></tr>
+            <tr><td>20</td><td>Regulatory Compliance Sign-Off</td><td>Project E – Network Modernisation</td><td>InfraCore Solutions</td><td><span class="status-badge status-planned"><span class="status-dot"></span>Planned</span></td><td>04-Jun-2026</td><td>Vishwas Mahajan</td><td>🔴 High</td><td>40%</td></tr>
+            <tr><td>21</td><td>Network Topology Documentation</td><td>Project E – Network Modernisation</td><td>InfraCore Solutions</td><td><span class="status-badge status-on-track"><span class="status-dot"></span>On Track</span></td><td>30-May-2026</td><td>Rahul Gupta</td><td>🟡 Medium</td><td>65%</td></tr>
+            <tr><td>22</td><td>Vendor SLA Review</td><td>Project E – Network Modernisation</td><td>InfraCore Solutions</td><td><span class="status-badge status-completed"><span class="status-dot"></span>Completed</span></td><td>12-May-2026</td><td>Jagdish Gawraskar</td><td>🟡 Medium</td><td>100%</td></tr>
+          </tbody>
+        </table>`,
+      'By Project & Client': `
+        <div class="info-callout">📁 Task health summary per project and client. Click a row to drill further.</div>
+        <table class="drill-table">
+          <thead><tr><th>Project</th><th>Client</th><th>Total</th><th>On Track</th><th>Planned</th><th>Delayed</th><th>At Risk</th><th>Completed</th><th>Health</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Project A</strong><br><span style="font-size:10px;color:#64748b;">ERP Integration</span></td><td>Mc Mary Jones Corp</td><td>5</td><td>2</td><td>2</td><td>0</td><td>0</td><td>1</td><td><span style="color:var(--green);font-weight:700;">🟢 Good</span></td></tr>
+            <tr><td><strong>Project B</strong><br><span style="font-size:10px;color:#64748b;">Cloud Migration</span></td><td>TechNova Inc</td><td>5</td><td>0</td><td>1</td><td>2</td><td>2</td><td>0</td><td><span style="color:var(--red);font-weight:700;">🔴 Critical</span></td></tr>
+            <tr><td><strong>Project C</strong><br><span style="font-size:10px;color:#64748b;">Retail Analytics Portal</span></td><td>GlobalRetail Ltd</td><td>4</td><td>1</td><td>2</td><td>0</td><td>0</td><td>1</td><td><span style="color:var(--green);font-weight:700;">🟢 Good</span></td></tr>
+            <tr><td><strong>Project D</strong><br><span style="font-size:10px;color:#64748b;">Compliance Tracker</span></td><td>Sunrise Pharma</td><td>4</td><td>0</td><td>1</td><td>2</td><td>0</td><td>1</td><td><span style="color:var(--amber);font-weight:700;">🟡 Monitor</span></td></tr>
+            <tr><td><strong>Project E</strong><br><span style="font-size:10px;color:#64748b;">Network Modernisation</span></td><td>InfraCore Solutions</td><td>4</td><td>2</td><td>1</td><td>0</td><td>0</td><td>1</td><td><span style="color:var(--green);font-weight:700;">🟢 Good</span></td></tr>
+          </tbody>
+        </table>`,
+      'Overdue & At Risk': `
+        <div class="info-callout">🔴 9 tasks need immediate attention. PMs must acknowledge and update action plans within 24 hours.</div>
+        <table class="drill-table">
+          <thead><tr><th>Task</th><th>Project</th><th>Client</th><th>Status</th><th>Due Date</th><th>Overdue By</th><th>Assignee</th><th>Action Needed</th></tr></thead>
+          <tbody>
+            <tr style="background:#fff5f5;"><td><strong>UAT Test Case Preparation</strong></td><td>Project B</td><td>TechNova Inc</td><td><span class="status-badge status-delayed"><span class="status-dot"></span>Delayed</span></td><td>19-May-2026</td><td style="color:var(--red);font-weight:700;">+4 days</td><td>Priya Mehta</td><td>🔴 Escalate to QA Lead</td></tr>
+            <tr style="background:#fff5f5;"><td><strong>UAT Sign-Off</strong></td><td>Project B</td><td>TechNova Inc</td><td><span class="status-badge status-delayed"><span class="status-dot"></span>Delayed</span></td><td>21-May-2026</td><td style="color:var(--red);font-weight:700;">+2 days</td><td>Anwar Shaikh</td><td>🔴 Client escalation required</td></tr>
+            <tr style="background:#fff5f5;"><td><strong>Regulatory Module Testing</strong></td><td>Project D</td><td>Sunrise Pharma</td><td><span class="status-badge status-delayed"><span class="status-dot"></span>Delayed</span></td><td>22-May-2026</td><td style="color:var(--red);font-weight:700;">+1 day</td><td>Priya Mehta</td><td>🔴 Notify Sunrise Pharma QA</td></tr>
+            <tr style="background:#fff5f5;"><td><strong>UAT Demo Preparation</strong></td><td>Project D</td><td>Sunrise Pharma</td><td><span class="status-badge status-delayed"><span class="status-dot"></span>Delayed</span></td><td>30-May-2026</td><td style="color:var(--amber);font-weight:700;">Due soon</td><td>Anand Gadhawe</td><td>🟡 Expedite demo environment</td></tr>
+            <tr style="background:#fef9ec;"><td><strong>Cost Estimation Finalization</strong></td><td>Project B</td><td>TechNova Inc</td><td><span class="status-badge status-at-risk"><span class="status-dot"></span>At Risk</span></td><td>24-May-2026</td><td style="color:var(--amber);font-weight:700;">Due soon</td><td>Sambasivam</td><td>🟡 Finance team alignment call</td></tr>
+            <tr style="background:#fef9ec;"><td><strong>Finance Committee Presentation</strong></td><td>Project B</td><td>TechNova Inc</td><td><span class="status-badge status-at-risk"><span class="status-dot"></span>At Risk</span></td><td>28-May-2026</td><td style="color:var(--amber);font-weight:700;">5 days</td><td>Vishwas Mahajan</td><td>🟡 Slides need PM review</td></tr>
+            <tr style="background:#fef9ec;"><td><strong>CFO Risk Sign-Off</strong></td><td>Project B</td><td>TechNova Inc</td><td><span class="status-badge status-planned"><span class="status-dot"></span>Planned</span></td><td>28-May-2026</td><td style="color:var(--amber);font-weight:700;">5 days</td><td>Sambasivam</td><td>🟡 Block CFO calendar slot</td></tr>
+            <tr style="background:#fef9ec;"><td><strong>Stakeholder Sign-Off Workshop</strong></td><td>Project A</td><td>Mc Mary Jones Corp</td><td><span class="status-badge status-planned"><span class="status-dot"></span>Planned</span></td><td>25-May-2026</td><td style="color:var(--amber);font-weight:700;">2 days</td><td>Anand Gadhawe</td><td>🟡 Send pre-read materials</td></tr>
+            <tr style="background:#fef9ec;"><td><strong>Client Feedback Incorporation</strong></td><td>Project D</td><td>Sunrise Pharma</td><td><span class="status-badge status-planned"><span class="status-dot"></span>Planned</span></td><td>02-Jun-2026</td><td style="color:var(--amber);font-weight:700;">10 days</td><td>Rahul Gupta</td><td>🟡 Collect feedback from client</td></tr>
+          </tbody>
+        </table>`,
+      'Completed': `
+        <div class="info-callout">✅ 8 tasks completed in this period. These are archived and available for audit.</div>
+        <table class="drill-table">
+          <thead><tr><th>Task</th><th>Project</th><th>Client</th><th>Completed Date</th><th>Completed By</th><th>Time Taken</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>KPI Definition Workshop</td><td>Project C – Retail Analytics Portal</td><td>GlobalRetail Ltd</td><td>14-May-2026</td><td>Anwar Shaikh</td><td>8 hrs</td><td>✅ On time. Client approved all KPIs.</td></tr>
+            <tr><td>Audit Trail Configuration</td><td>Project D – Compliance Tracker</td><td>Sunrise Pharma</td><td>10-May-2026</td><td>Deepika Nair</td><td>12 hrs</td><td>✅ Early. Passed compliance audit.</td></tr>
+            <tr><td>Vendor SLA Review</td><td>Project E – Network Modernisation</td><td>InfraCore Solutions</td><td>12-May-2026</td><td>Jagdish Gawraskar</td><td>4 hrs</td><td>✅ SLA renegotiated — 20% cost saving.</td></tr>
+            <tr><td>ERP Vendor Shortlisting</td><td>Project A – ERP Integration</td><td>Mc Mary Jones Corp</td><td>08-May-2026</td><td>Anwar Shaikh</td><td>16 hrs</td><td>✅ 3 vendors shortlisted and approved.</td></tr>
+            <tr><td>Cloud Architecture Blueprint</td><td>Project B – Cloud Migration</td><td>TechNova Inc</td><td>05-May-2026</td><td>Rahul Gupta</td><td>20 hrs</td><td>✅ Approved by CTO on 06-May.</td></tr>
+            <tr><td>Security Assessment</td><td>Project B – Cloud Migration</td><td>TechNova Inc</td><td>09-May-2026</td><td>Rahul Gupta</td><td>10 hrs</td><td>✅ Zero critical findings.</td></tr>
+            <tr><td>Data Flow Diagrams</td><td>Project C – Retail Analytics Portal</td><td>GlobalRetail Ltd</td><td>13-May-2026</td><td>Priya Mehta</td><td>6 hrs</td><td>✅ Approved in design review.</td></tr>
+            <tr><td>Project Kick-Off</td><td>Project E – Network Modernisation</td><td>InfraCore Solutions</td><td>02-May-2026</td><td>Saji Unni</td><td>4 hrs</td><td>✅ All stakeholders aligned. Charter signed.</td></tr>
+          </tbody>
+        </table>`
+    }
+  }
+};
+
+let currentModal = null;
+let currentTab = null;
+
+function openModal(type, title, subtitle) {
+  currentModal = type;
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-subtitle').textContent = subtitle;
+  const data = modalData[type];
+  if (!data) return;
+  const firstTab = data.tabs[0];
+  currentTab = firstTab;
+  let tabsHtml = `<div class="drill-tabs">${data.tabs.map(t => `<div class="drill-tab${t===firstTab?' active':''}" onclick="switchTab('${type}','${t}',this)">${t}</div>`).join('')}</div>`;
+  let contentHtml = `<div class="drill-tab-content active" id="drill-content">${data.content[firstTab]||'<p>No data.</p>'}</div>`;
+  document.getElementById('modal-body').innerHTML = tabsHtml + contentHtml;
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  injectLiveKPI(type, firstTab);
+}
+
+function switchTab(type, tab, el) {
+  document.querySelectorAll('.drill-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  const data = modalData[type];
+  document.getElementById('drill-content').innerHTML = data.content[tab] || '<p>No data available.</p>';
+  injectLiveKPI(type, tab);
+}
+
+function closeModal(e) { if (e.target === document.getElementById('modal-overlay')) closeModalDirect(); }
+function closeModalDirect() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// ===== CHART.JS CHARTS =====
+function makeDonut(id, pct, color, bg) {
+  const ctx = document.getElementById(id);
+  if (!ctx) return null;
+  return new Chart(ctx, {
+    type: 'doughnut',
+    data: { datasets: [{ data: [pct, 100-pct], backgroundColor: [color, bg || '#e2e8f0'], borderWidth: 0, hoverOffset: 0 }] },
+    options: { cutout: '72%', animation: { animateRotate: true, duration: 900 }, plugins: { legend: { display: false }, tooltip: { enabled: false } }, events: [] }
+  });
+}
+
+const revDonutChart = makeDonut('revDonut', 80, '#1a3c8f', '#dbeafe');
+const costDonutChart = makeDonut('costDonut', 81, '#0d9488', '#d1fae5');
+const marginDonutChart = makeDonut('marginDonut', 43, '#7c3aed', '#ede9fe');
+
+// Task Donut
+const taskDonutChart = new Chart(document.getElementById('taskDonut'), {
+  type: 'doughnut',
+  data: { datasets: [{ data: [26,18,12,9,15], backgroundColor: ['#3b82f6','#22c55e','#f97316','#ef4444','#94a3b8'], borderWidth: 2, borderColor: '#fff', hoverOffset: 4 }] },
+  options: { cutout: '68%', plugins: { legend: { display: false }, tooltip: { enabled: false } }, animation: { duration: 900 } }
+});
+
+// Timesheet Donut
+const tsDonutChart = new Chart(document.getElementById('tsDonut'), {
+  type: 'doughnut',
+  data: { datasets: [{ data: [125,20], backgroundColor: ['#4f46e5','#a78bfa'], borderWidth: 2, borderColor: '#fff' }] },
+  options: { cutout: '65%', plugins: { legend: { display: false }, tooltip: { enabled: false } }, animation: { duration: 900 } }
+});
+
+// Planned vs Actual chart
+const pvaCtx = document.getElementById('pvaChart');
+const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep'];
+const actual = [95,105,120,115,145,130,140,135,150];
+const planned = [110,110,115,120,140,135,145,140,155];
+const billable = [84,86,88,90,86,87,89,88,90];
+const pvaChartInstance = new Chart(pvaCtx, {
+  type: 'bar',
+  data: {
+    labels: months,
+    datasets: [
+      { label: 'Actual', data: actual, backgroundColor: '#1a3c8f', borderRadius: 4, barPercentage: 0.4, order: 2 },
+      { label: 'Planned', data: planned, backgroundColor: '#93c5fd', borderRadius: 4, barPercentage: 0.4, order: 3 },
+      { label: 'Billable %', data: billable, type: 'line', yAxisID: 'y2', borderColor: '#f59e0b', backgroundColor: 'transparent', borderDash: [5,3], pointRadius: 4, pointBackgroundColor: '#f59e0b', tension: 0.3, order: 1 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    scales: {
+      y: { beginAtZero: true, title: { display: true, text: 'Hours', font: { size: 10 } }, ticks: { font: { size: 10 } }, grid: { color: '#f1f5f9' } },
+      y2: { position: 'right', min: 0, max: 100, title: { display: true, text: 'Billable %', font: { size: 10 } }, ticks: { font: { size: 10 }, callback: v => v+'%' }, grid: { display: false } },
+      x: { ticks: { font: { size: 10 } }, grid: { display: false } }
+    },
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.raw + (ctx.dataset.label === 'Billable %' ? '%' : ' hrs') } } },
+    onClick: () => openModal('pva','Planned vs Actual Drill-Down','Month-by-month and project-by-project analysis')
+  }
+});
+
+// Horizontal bar chart
+function renderHbarChart(data) {
+  const maxH = Math.max(...data.map(d => Math.max(d.actual, d.planned))) * 1.12;
+  const hbarEl = document.getElementById('hbar-chart');
+  hbarEl.innerHTML = data.map(d => `
+    <div class="hbar-row" onclick="openModal('hbar','Planned vs Actual by Project Drill-Down','Resource-level and task-level hour breakdown per project')" style="cursor:pointer;">
+      <div class="hbar-label" style="width:90px;">${d.label}<span class="hbar-client">${d.client}</span></div>
+      <div class="hbar-track" style="position:relative;height:22px;flex:1;background:#f0f4fc;border-radius:4px;">
+        <div style="position:absolute;top:0;left:0;height:100%;width:${(d.planned/maxH*100)}%;background:#bfdbfe;border-radius:4px;opacity:0.7;transition:width 0.7s cubic-bezier(.4,0,.2,1);"></div>
+        <div style="position:absolute;top:0;left:0;height:100%;width:${(d.actual/maxH*100)}%;background:#1a3c8f;border-radius:4px;display:flex;align-items:center;justify-content:flex-end;padding-right:5px;transition:width 0.7s cubic-bezier(.4,0,.2,1);">
+          <span style="color:white;font-size:9px;font-weight:700;">${d.actual}</span>
+        </div>
+      </div>
+      <div class="hbar-vals">${d.actual} / ${d.planned}</div>
+    </div>
+  `).join('');
+}
+
+const hbarData = [
+  { label: 'Project A', client: 'Mc Mary Jones', actual: 101, planned: 120 },
+  { label: 'Project B', client: 'TechNova Inc',  actual: 118, planned: 140 },
+  { label: 'Project C', client: 'GlobalRetail',  actual: 80,  planned: 110 },
+  { label: 'Project D', client: 'Sunrise Pharma',actual: 63,  planned: 90  },
+  { label: 'Project E', client: 'InfraCore Sol', actual: 77,  planned: 100 },
+  { label: 'Project F', client: 'FinEdge Cap',   actual: 89,  planned: 120 },
+];
+renderHbarChart(hbarData);
+
+// Close dropdowns on outside click
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#ms-period') && !e.target.closest('.time-period-filter')) closeTimePeriod();
+});
+
+/* =========================================================================
+   LIVE DATA SIMULATION ENGINE
+   Every multiselect / time-period combo is hashed into a deterministic seed.
+   Changing ANY combo (Apply on a dropdown, or Apply on time period) recomputes
+   a full, internally-consistent set of KPI / chart / widget values so the
+   dashboard genuinely reacts — ideal for stakeholder walkthroughs.
+   ========================================================================= */
+
+const ALL_FILTER_IDS = [
+  'ms-client','ms-pstatus','ms-pm','ms-cc','ms-gc','ms-dept','ms-bg','ms-ou',
+  'ms-du','ms-dt','ms-pg','ms-sp','ms-prog','ms-progm','ms-port','ms-portm',
+  'ms-rr','ms-skill','ms-bt','ms-coc'
+];
+
+// Baseline scenario === exactly the numbers the dashboard ships with, so the
+// very first paint (and any modal opened before a filter is touched) matches
+// the static design pixel-for-pixel.
+const INITIAL_SCENARIO = {
+  revenue: { plan: 20000000, actual: 17000000, achPct: 80 },
+  cost:    { plan: 17000000, actual: 13700000, consPct: 81 },
+  margin:  { actual: 1300000, plan: 3000000, achPct: 43, pct: 7.6 },
+  tasks:   { total: 80, counts: { planned: 26, onTrack: 18, delayed: 12, atRisk: 9, completed: 15 } },
+  timesheet: { total: 145, billableHrs: 125, nonBillableHrs: 20, billablePct: 86, compliance: 92 },
+  pva: { months, actual: actual.slice(), planned: planned.slice(), billable: billable.slice() },
+  hbar: hbarData.map(d => ({...d}))
+};
+let currentScenario = INITIAL_SCENARIO;
+
+function cyrb53(str, seed = 0) {
+  let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+  for (let i = 0, ch; i < str.length; i++) {
+    ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return 4294967296 * (2097151 & h2) + (h1 >>> 0);
+}
+function mulberry32(a) {
+  return function() {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function getCurrentFilterState() {
+  const state = { period: (document.getElementById('ms-period-val').textContent || '').trim() };
+  ALL_FILTER_IDS.forEach(id => {
+    const el = document.getElementById(id + '-val');
+    state[id] = el ? el.textContent.trim() : '';
+  });
+  return state;
+}
+
+function periodScale(period) {
+  const map = {
+    'Today': 0.045, 'Yesterday': 0.045,
+    'This week (Sun - Today)': 0.22, 'Last 7 days': 0.22, 'Last week (Sun - Sat)': 0.22,
+    'Last 28 days': 0.95, 'Last 30 days': 1.0,
+    'This Month': 1.0, 'Last Month': 0.93,
+    'This Quarter': 2.9, 'This Year': 10.5, 'Custom': 1.0
+  };
+  return map[period] || 1.0;
+}
+
+function statusBias(pstatusLabel) {
+  const l = (pstatusLabel || '').toLowerCase();
+  if (l.includes('at risk')) return { planned: 0.8, onTrack: 0.6, delayed: 1.7, atRisk: 2.3, completed: 0.45 };
+  if (l.includes('completed')) return { planned: 0.35, onTrack: 0.7, delayed: 0.3, atRisk: 0.3, completed: 2.6 };
+  if (l.includes('closed')) return { planned: 0.3, onTrack: 0.5, delayed: 0.4, atRisk: 0.3, completed: 2.2 };
+  if (l.includes('on hold')) return { planned: 2.1, onTrack: 0.4, delayed: 0.7, atRisk: 0.8, completed: 0.5 };
+  return { planned: 1, onTrack: 1, delayed: 1, atRisk: 1, completed: 1 };
+}
+
+function formatINR(num) {
+  num = Math.round(num);
+  let sign = num < 0 ? '-' : '';
+  num = Math.abs(num);
+  let str = num.toString();
+  let lastThree = str.substring(str.length - 3);
+  let other = str.substring(0, str.length - 3);
+  if (other !== '') lastThree = ',' + lastThree;
+  other = other.replace(/\B(?=(\d{2})+(?!\d))/g, ',');
+  return sign + '₹' + other + lastThree;
+}
+function formatINRShort(num) {
+  const sign = num < 0 ? '-' : '';
+  num = Math.abs(num);
+  if (num >= 10000000) return sign + '₹' + (num / 10000000).toFixed(2).replace(/0$/, '').replace(/\.$/, '') + 'Cr';
+  if (num >= 100000) return sign + '₹' + (num / 100000).toFixed(1).replace(/\.0$/, '') + 'L';
+  return sign + formatINR(num);
+}
+
+function generateScenario() {
+  const state = getCurrentFilterState();
+  const seedStr = JSON.stringify(state);
+  const rand = mulberry32(cyrb53(seedStr) >>> 0);
+  const scale = periodScale(state.period);
+  const bias = statusBias(state['ms-pstatus']);
+
+  // ---- Revenue / Cost / Margin ----
+  const revPlan = Math.round((16000000 + rand() * 8000000) * scale);
+  const revAch = 0.62 + rand() * 0.42;
+  const revActual = Math.round(revPlan * revAch);
+
+  const costPlanRatio = 0.76 + rand() * 0.16;
+  const costPlan = Math.round(revPlan * costPlanRatio);
+  const costCons = 0.66 + rand() * 0.30;
+  const costActual = Math.round(costPlan * costCons);
+
+  const marginActual = revActual - costActual;
+  const marginPlan = revPlan - costPlan;
+  const marginAch = marginPlan > 0 ? Math.max(0, Math.min(180, (marginActual / marginPlan) * 100)) : 0;
+  const marginPct = revActual > 0 ? (marginActual / revActual * 100) : 0;
+
+  // ---- Tasks ----
+  const totalTasks = Math.max(10, Math.round((40 + rand() * 75) * Math.min(scale, 3.2)));
+  const keys = ['planned','onTrack','delayed','atRisk','completed'];
+  const raw = {}; keys.forEach(k => raw[k] = (0.4 + rand()) * bias[k]);
+  const rawSum = keys.reduce((s,k) => s + raw[k], 0);
+  const counts = {}; let assigned = 0;
+  keys.forEach((k, i) => {
+    if (i < keys.length - 1) { counts[k] = Math.max(0, Math.round(raw[k] / rawSum * totalTasks)); assigned += counts[k]; }
+    else counts[k] = Math.max(0, totalTasks - assigned);
+  });
+  const finalTotal = keys.reduce((s,k) => s + counts[k], 0);
+
+  // ---- Timesheet ----
+  const tsTotal = Math.max(8, Math.round((90 + rand() * 110) * scale));
+  const billablePctRaw = 0.70 + rand() * 0.22;
+  const billableHrs = Math.round(tsTotal * billablePctRaw);
+  const nonBillableHrs = Math.max(0, tsTotal - billableHrs);
+  const compliance = Math.round(74 + rand() * 24);
+
+  // ---- Planned vs Actual (9 months) ----
+  const baseMonthly = 85 + rand() * 65;
+  const trend = (rand() - 0.35) * 7;
+  const pvaActual = [], pvaPlanned = [], pvaBillable = [];
+  for (let i = 0; i < 9; i++) {
+    const p = Math.max(20, Math.round((baseMonthly + trend * i) * scale + (rand() - 0.5) * 10));
+    const a = Math.max(8, Math.round(p * (0.74 + rand() * 0.38)));
+    pvaActual.push(a);
+    pvaPlanned.push(Math.max(a, p));
+    pvaBillable.push(Math.round(72 + rand() * 24));
+  }
+
+  // ---- Horizontal bar (per project) ----
+  const PROJ_CLIENTS = ['Mc Mary Jones','TechNova Inc','GlobalRetail','Sunrise Pharma','InfraCore Sol','FinEdge Cap'];
+  const projNames = ['Project A','Project B','Project C','Project D','Project E','Project F'];
+  const hbar = projNames.map((name, i) => {
+    const plannedHrs = Math.max(15, Math.round((60 + rand() * 95) * scale));
+    const actualHrs = Math.max(5, Math.round(plannedHrs * (0.55 + rand() * 0.55)));
+    return { label: name, client: PROJ_CLIENTS[i], actual: actualHrs, planned: plannedHrs };
+  });
+
+  return {
+    state, scale,
+    revenue: { plan: revPlan, actual: revActual, achPct: Math.round(revAch * 100) },
+    cost: { plan: costPlan, actual: costActual, consPct: Math.round(costCons * 100) },
+    margin: { actual: marginActual, plan: marginPlan, achPct: Math.round(marginAch), pct: marginPct },
+    tasks: { total: finalTotal, counts },
+    timesheet: { total: tsTotal, billableHrs, nonBillableHrs, billablePct: Math.round(billablePctRaw * 100), compliance },
+    pva: { months, actual: pvaActual, planned: pvaPlanned, billable: pvaBillable },
+    hbar
+  };
+}
+
+function flash(ids) {
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('flash-update'); void el.offsetWidth; el.classList.add('flash-update');
+  });
+}
+function pop(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('value-pop'); void el.offsetWidth; el.classList.add('value-pop');
+}
+
+function renderKPIs(sc) {
+  // Revenue
+  document.getElementById('rev-pct').textContent = sc.revenue.achPct + '%';
+  document.getElementById('rev-actual').textContent = formatINR(sc.revenue.actual);
+  document.getElementById('rev-plan').textContent = formatINR(sc.revenue.plan);
+  document.getElementById('rev-bar').style.width = Math.min(100, sc.revenue.achPct) + '%';
+  const revVarEl = document.getElementById('rev-variance');
+  const revVar = sc.revenue.actual - sc.revenue.plan;
+  if (revVar >= 0) { revVarEl.style.color = 'var(--green)'; revVarEl.textContent = '▲ ' + formatINR(revVar) + ' surplus'; }
+  else { revVarEl.style.color = 'var(--amber)'; revVarEl.textContent = '▼ ' + formatINR(Math.abs(revVar)); }
+  updateDonut(revDonutChart, sc.revenue.achPct);
+
+  // Cost
+  document.getElementById('cost-pct').textContent = sc.cost.consPct + '%';
+  document.getElementById('cost-actual').textContent = formatINR(sc.cost.actual);
+  document.getElementById('cost-plan').textContent = formatINR(sc.cost.plan);
+  document.getElementById('cost-bar').style.width = Math.min(100, sc.cost.consPct) + '%';
+  const costVarEl = document.getElementById('cost-variance');
+  const costVar = sc.cost.plan - sc.cost.actual;
+  if (costVar >= 0) { costVarEl.style.color = 'var(--green)'; costVarEl.textContent = '▲ ' + formatINR(costVar) + ' saved'; }
+  else { costVarEl.style.color = 'var(--red)'; costVarEl.textContent = '▼ ' + formatINR(Math.abs(costVar)) + ' overrun'; }
+  updateDonut(costDonutChart, sc.cost.consPct);
+
+  // Margin
+  document.getElementById('margin-pct').textContent = sc.margin.achPct + '%';
+  document.getElementById('margin-actual').textContent = formatINR(sc.margin.actual);
+  document.getElementById('margin-plan').textContent = formatINR(sc.margin.plan);
+  document.getElementById('margin-bar').style.width = Math.min(100, sc.margin.achPct) + '%';
+  const marginPctEl = document.getElementById('margin-marginpct');
+  marginPctEl.style.color = sc.margin.pct < 10 ? 'var(--red)' : (sc.margin.pct < 15 ? 'var(--amber)' : 'var(--green)');
+  marginPctEl.innerHTML = sc.margin.pct.toFixed(1) + '% <small>(Target: 15%)</small>';
+  updateDonut(marginDonutChart, sc.margin.achPct);
+
+  flash(['kpi-card-revenue','kpi-card-cost','kpi-card-margin']);
+  ['rev-pct','cost-pct','margin-pct'].forEach(pop);
+}
+
+function updateDonut(chart, pct) {
+  if (!chart) return;
+  const p = Math.max(0, Math.min(100, pct));
+  chart.data.datasets[0].data = [p, 100 - p];
+  chart.update();
+}
+
+function renderTaskStatus(sc) {
+  const c = sc.tasks.counts, total = sc.tasks.total || 1;
+  document.getElementById('task-total-num').textContent = sc.tasks.total;
+  document.getElementById('task-footer-total').textContent = sc.tasks.total;
+  const map = { planned: 'planned', ontrack: 'onTrack', delayed: 'delayed', atrisk: 'atRisk', completed: 'completed' };
+  Object.keys(map).forEach(domKey => {
+    const val = c[map[domKey]] || 0;
+    document.getElementById('legend-' + domKey + '-count').textContent = val;
+    document.getElementById('legend-' + domKey + '-pct').textContent = '(' + Math.round(val / total * 100) + '%)';
+  });
+  taskDonutChart.data.datasets[0].data = [c.planned, c.onTrack, c.delayed, c.atRisk, c.completed];
+  taskDonutChart.update();
+  flash(['widget-taskstatus']);
+  pop('task-total-num');
+}
+
+function renderTimesheet(sc) {
+  const t = sc.timesheet;
+  document.getElementById('ts-total').textContent = t.total;
+  document.getElementById('ts-billable-value').textContent = t.billableHrs + ' Hrs (' + t.billablePct + '%)';
+  document.getElementById('ts-billable-bar').style.width = t.billablePct + '%';
+  const nbPct = 100 - t.billablePct;
+  document.getElementById('ts-nonbillable-value').textContent = t.nonBillableHrs + ' Hrs (' + nbPct + '%)';
+  document.getElementById('ts-nonbillable-bar').style.width = nbPct + '%';
+  const compEl = document.getElementById('ts-compliance-value');
+  compEl.textContent = t.compliance + '%';
+  compEl.style.color = t.compliance >= 90 ? 'var(--green)' : (t.compliance >= 80 ? 'var(--amber)' : 'var(--red)');
+  tsDonutChart.data.datasets[0].data = [t.billableHrs, t.nonBillableHrs];
+  tsDonutChart.update();
+  flash(['widget-timesheet']);
+  pop('ts-total');
+}
+
+function renderPVA(sc) {
+  pvaChartInstance.data.datasets[0].data = sc.pva.actual;
+  pvaChartInstance.data.datasets[1].data = sc.pva.planned;
+  pvaChartInstance.data.datasets[2].data = sc.pva.billable;
+  pvaChartInstance.update();
+  flash(['widget-pva']);
+}
+
+function renderHbarWidget(sc) {
+  renderHbarChart(sc.hbar);
+  flash(['widget-hbar']);
+}
+
+function updateTimestamp() {
+  const d = new Date();
+  const monthsShort = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  let h = d.getHours(); const ampm = h >= 12 ? 'PM' : 'AM'; h = h % 12; if (h === 0) h = 12;
+  const mm = d.getMinutes().toString().padStart(2, '0');
+  const text = `${d.getDate().toString().padStart(2,'0')} ${monthsShort[d.getMonth()]} ${d.getFullYear()} · ${h}:${mm} ${ampm}`;
+  document.getElementById('last-updated-value').textContent = text;
+}
+
+let toastTimer = null;
+function showToast(msg) {
+  const t = document.getElementById('live-toast');
+  t.innerHTML = `<span class="live-dot"></span>${msg}`;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+function onFilterChanged(isManualRefresh) {
+  const sc = generateScenario();
+  currentScenario = sc;
+  renderKPIs(sc);
+  renderTaskStatus(sc);
+  renderTimesheet(sc);
+  renderPVA(sc);
+  renderHbarWidget(sc);
+  updateTimestamp();
+  showToast(isManualRefresh ? 'Dashboard data refreshed' : 'Filters applied — dashboard updated');
+}
+
+function refreshDashboard() {
+  onFilterChanged(true);
+}
+
+// ---- Keep drill-down modal headline numbers in sync with current filters ----
+function modalKPI(val, lbl) {
+  return `<div class="modal-kpi"><div class="modal-kpi-val">${val}</div><div class="modal-kpi-lbl">${lbl}</div></div>`;
+}
+function liveModalKPI(type, tab) {
+  const sc = currentScenario;
+  if (type === 'revenue' && tab === 'By Project') {
+    const v = sc.revenue.actual - sc.revenue.plan;
+    return `<div class="modal-kpi-grid">
+      ${modalKPI(formatINRShort(sc.revenue.actual), 'Actual Revenue')}
+      ${modalKPI(formatINRShort(sc.revenue.plan), 'Planned Revenue')}
+      ${modalKPI(sc.revenue.achPct + '%', 'Achievement')}
+      ${modalKPI((v>=0?'▲':'▼') + formatINRShort(Math.abs(v)), v>=0?'Surplus':'Shortfall')}
+    </div>`;
+  }
+  if (type === 'cost' && tab === 'By Cost Category') {
+    const saved = sc.cost.plan - sc.cost.actual;
+    return `<div class="modal-kpi-grid">
+      ${modalKPI(formatINRShort(sc.cost.actual), 'Actual Cost')}
+      ${modalKPI(formatINRShort(sc.cost.plan), 'Planned Cost')}
+      ${modalKPI(sc.cost.consPct + '%', 'Consumption')}
+      ${modalKPI((saved>=0?'₹':'-₹') + formatINRShort(Math.abs(saved)).replace('₹',''), saved>=0?'Saved':'Overrun')}
+    </div>`;
+  }
+  if (type === 'margin' && tab === 'Summary') {
+    return `<div class="modal-kpi-grid">
+      ${modalKPI(formatINRShort(sc.margin.actual), 'Actual Margin')}
+      ${modalKPI(formatINRShort(sc.margin.plan), 'Planned Margin')}
+      ${modalKPI(sc.margin.pct.toFixed(1) + '%', 'Margin %')}
+      ${modalKPI(sc.margin.achPct + '%', 'Achievement')}
+    </div>`;
+  }
+  if (type === 'tasks' && tab === 'All Tasks') {
+    const c = sc.tasks.counts;
+    const health = sc.tasks.total ? Math.round((c.onTrack + c.completed) / sc.tasks.total * 100) : 0;
+    return `<div class="modal-kpi-grid">
+      ${modalKPI(sc.tasks.total, 'Total Tasks')}
+      ${modalKPI(health + '%', 'Health Score')}
+      ${modalKPI(c.atRisk + c.delayed, 'At Risk / Delayed')}
+      ${modalKPI(c.completed, 'Completed')}
+    </div>`;
+  }
+  if (type === 'timesheet' && tab === 'By Resource') {
+    const missing = Math.max(0, 100 - sc.timesheet.compliance);
+    return `<div class="modal-kpi-grid">
+      ${modalKPI(sc.timesheet.total, 'Total Hours')}
+      ${modalKPI(sc.timesheet.billablePct + '%', 'Billable %')}
+      ${modalKPI(sc.timesheet.compliance + '%', 'Compliance')}
+      ${modalKPI(missing + '%', 'Missing')}
+    </div>`;
+  }
+  if (type === 'pva' && tab === 'Monthly Trend') {
+    const avgSPI = (sc.pva.actual.reduce((a,b)=>a+b,0) / sc.pva.planned.reduce((a,b)=>a+b,0)).toFixed(2);
+    const avgBill = Math.round(sc.pva.billable.reduce((a,b)=>a+b,0) / sc.pva.billable.length);
+    const lastHrs = sc.pva.actual[sc.pva.actual.length - 1];
+    return `<div class="modal-kpi-grid">
+      ${modalKPI(avgSPI, 'Avg SPI')}
+      ${modalKPI(avgBill + '%', 'Avg Billable%')}
+      ${modalKPI(sc.pva.months[0] + '–' + sc.pva.months[sc.pva.months.length-1], 'Period')}
+      ${modalKPI(lastHrs + ' hrs', sc.pva.months[sc.pva.months.length-1] + ' Hours')}
+    </div>`;
+  }
+  if (type === 'hbar' && tab === 'By Project') {
+    const totA = sc.hbar.reduce((s,d)=>s+d.actual,0);
+    const totP = sc.hbar.reduce((s,d)=>s+d.planned,0);
+    const spi = totP ? (totA/totP).toFixed(2) : '0.00';
+    const behind = Math.max(0, totP - totA);
+    let rows = sc.hbar.map(d => `<tr><td><strong>${d.label}</strong><br><span style="font-size:10px;color:#64748b;">${d.client}</span></td><td>${d.actual}</td><td>${d.planned}</td><td>${d.actual-d.planned}</td><td>${d.planned?(d.actual/d.planned).toFixed(2):'0.00'}</td></tr>`).join('');
+    return `<div class="modal-kpi-grid">
+      ${modalKPI(totA, 'Total Actual Hrs')}
+      ${modalKPI(totP, 'Total Planned Hrs')}
+      ${modalKPI(spi, 'Portfolio SPI')}
+      ${modalKPI(behind + ' hrs', 'Behind Plan')}
+    </div>
+    <table class="drill-table"><thead><tr><th>Project / Client</th><th>Actual Hrs</th><th>Planned Hrs</th><th>Variance</th><th>SPI</th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+  }
+  return null;
+}
+function injectLiveKPI(type, tab) {
+  const container = document.getElementById('drill-content');
+  if (!container) return;
+  const html = liveModalKPI(type, tab);
+  if (html === null) return;
+  if (type === 'hbar' && tab === 'By Project') { container.innerHTML = html; return; }
+  const grid = container.querySelector('.modal-kpi-grid');
+  if (grid) grid.outerHTML = html;
+}
+</script>
+</body>
+</html>
